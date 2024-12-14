@@ -92,7 +92,7 @@ This will generate a dataset in `data_generation/datasets/coinrun_v2.0.0_test`.
 To run evaluation on the provided weights of `GenieRedux`:
 
 ```
-bash run.sh --config=genie_redux.yaml --mode=eval --eval.action_to_take=-1 --eval.inference_method=one_go --eval.model_fpath=checkpoints/GenieRedux_CoinRun_250mln_v1.0/model.pt --tokenizer_fpath=checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt
+bash run.sh --config=genie_redux.yaml --mode=eval --eval.action_to_take=-1 --eval.inference_method=one_go --eval.model_fpath=checkpoints/GenieRedux_CoinRun_250mln_v1.0/model.pt --tokenizer_fpath=checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt --dynamics.max_seq_len=8000 --lam.max_seq.len=8000
 ```
 
 For `GenieRedux-G`:
