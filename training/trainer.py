@@ -204,6 +204,7 @@ class Trainer(nn.Module):
                 log_with="wandb",
                 kwargs_handlers=[kwargs],
                 mixed_precision="bf16",
+                gradient_accumulation_steps=grad_accum_every,
             )
 
         self.evaluator = Evaluator(device=self.accelerator.device)
