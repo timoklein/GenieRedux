@@ -484,10 +484,7 @@ class Trainer(nn.Module):
                     self.model.parameters(), self.max_grad_norm
                 )
 
-            total_loss += loss.item() / self.grad_accum_every
-
-            # Log training loss
-            accum_log(logs, {"train_loss": loss.item() / self.grad_accum_every})
+            total_loss += loss / self.grad_accum_every
 
         # Optimizer step
         self.optim.step()
@@ -496,9 +493,12 @@ class Trainer(nn.Module):
         # Learning rate scheduler step
         self.scheduler_optim.step(self.step)
 
+        # Log training loss
+        accum_log(logs, {"train_loss": total_loss.item()})
+
         # Log learning rate and Loss
         if step % self.wandb_log_every == 0:
-            self.accelerator.log({"Train loss": total_loss}, step=step)
+            self.accelerator.log({"Train loss": total_loss.item()}, step=step)
             self.accelerator.log({"lr": self.optim.param_groups[0]["lr"]}, step=step)
 
         # Validation

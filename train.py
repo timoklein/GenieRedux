@@ -104,7 +104,7 @@ def run(args):
     if trainer.accelerator.is_main_process:
 
         debug("config: ", args)
-        print("Genie training is starting...\n")
+        print("GenieRedux training is starting...\n")
         print("Dataset : ", dataset_folder)
         count_parameters(model)
 
