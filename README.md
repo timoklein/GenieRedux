@@ -31,36 +31,34 @@ We train and evaluate the models on the CoinRun case study, as advised by the Ge
 <b>Prerequisites:</b>
 - Ensure you have Conda installed on your system. You can download and install Conda from the [official website](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-
-<b> Data Generation Environment Installation. </b>
-This will install the `coinrun` environment which enables the use of the Coinrun environment:
-```bash
-bash data_generation/external/install_coinrun.sh
-conda activate coinrun
-```
-
-<b>GenieRedux Environment  Installation:</b>
-1. Clone the repository:
-
+1. <b>Clone the repository.</b>
    ```shell
-   git clone https://github.com/insait-institute/GenieRedux.git
-   cd GenieRedux
+    git clone https://github.com/insait-institute/GenieRedux.git
+    cd GenieRedux
    ```
 
-2. Set up the Python environment:
+2. <b> Data Generation Environment Installation. </b>
+  This will install the `coinrun` environment which enables the use of the Coinrun environment:
+   ```shell
+    bash data_generation/external/install_coinrun.sh
+    conda activate coinrun
+   ```
+
+3. <b>GenieRedux Environment  Installation.</b>
+  Set up the Python environment:
    ```shell
     conda env create -f genie_redux_env.yaml
     conda activate genie_redux
    ``` 
    This script will create a conda environment named `genie_redux` and install all the required dependencies, inclduing `PyTorch-Cuda 12.1`, `Hydra`, and `Accelerate`.
 
-Note: This implementation is tested on Linux-64 with Python 3.10 and Conda package manager.
+   Note: This implementation is tested on Linux-64 with Python 3.10 and Conda package manager.
 
-<b>Model Weights Download:</b>
-To download the Tokenizer, GeniRedux and GenieRedux-G weights, run:
-```bash
-python download_models.py
-```
+4. <b>Model Weights Download:</b>
+  To download the Tokenizer, GeniRedux and GenieRedux-G weights, run:
+   ```bash
+    python download_models.py
+   ```
 
 This will create a `checkpoints` directory and store the weights:
 - Tokenizer - `checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt`
