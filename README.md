@@ -1,6 +1,9 @@
 <div align="center">
 
+
 # GenieRedux
+
+🔴 Our codebase for <b>"Exploration-Driven Generative Interactive Environments"</b> is coming here soon.
 
 This is the official repository of <b>"Learning Generative Interactive Environments by Trained Agent Exploration"</b>.
 
@@ -24,8 +27,6 @@ This is a Pytorch open-source implementation of the Genie world model (Bruce et.
 <b>GenieRedux-G</b> (Guided) is a version of GenieRedux, adapted for use with virtual environments and agents. In contrast to GenieRedux, this guided version takes its actions from an agent rather than predicting them from unnanotated data of human demonstrations (datasets which are costly to obtain and curate).
 
 We train and evaluate the models on the CoinRun case study, as advised by the Genie paper. We provide an easy data generation utility and an efficient data handler for training. In addition, we provide evaluation scripts.
-
-<b>Model weights are now available!</b>
 
 ## Installation
 <b>Prerequisites:</b>
