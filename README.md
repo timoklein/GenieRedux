@@ -3,25 +3,36 @@
 
 # GenieRedux
 
-🔴 Our codebase for <b>"Exploration-Driven Generative Interactive Environments"</b> is coming here soon.
+This is the official repository of <b>"Exploration-Driven Generative Interactive Environments, CVPR'25"</b>.
 
-This is the official repository of <b>"Learning Generative Interactive Environments by Trained Agent Exploration"</b>.
+[![Website](docs/badges/badge_project_page.svg)](https://insait-institute.github.io/GenieRedux/)
+[![Paper](docs/badges/badge_pdf.svg)]() 
+<!-- [![Models](docs/badges/badge_models.svg)](https://huggingface.co/INSAIT-Institute/GenieRedux)  -->
 
+Authors: [Nedko Savov](https://insait.ai/nedko-savov/), [Naser Kazemi](https://naser-kazemi.github.io/), [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Xi Wang](https://xiwang1212.github.io/homepage/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/)
+
+
+<!-- 
 [![Website](docs/badges/badge_project_page.svg)](https://nsavov.github.io/GenieRedux/)
 [![Paper](docs/badges/badge_pdf.svg)](https://arxiv.org/pdf/2409.06445) 
 [![Models](docs/badges/badge_models.svg)](https://huggingface.co/INSAIT-Institute/GenieRedux) 
 
-Authors: [Naser Kazemi](https://naser-kazemi.github.io/)\*, [Nedko Savov](https://insait.ai/nedko-savov/)\*, [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/)
+Authors: [Naser Kazemi](https://naser-kazemi.github.io/)\*, [Nedko Savov](https://insait.ai/nedko-savov/)\*, [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/) -->
 
 <!-- 
-Keywords: Genie, Genie world model, Generative Interactive Environments, Genie Implementation, Open Source, RL exploration, world models.
-This is a Pytorch open-source implementation of the Genie world model (Bruce et. al.) by Google DeepMind. 
+Keywords: Genie, Genie world model, Generative Interactive Environments, Genie Implementation, Open Source, RL exploration, world models, virtual environments, data-drive simulator.
+This repository contains a Pytorch open-source implementation of the Genie world model (Bruce et. al.) by Google DeepMind, as well as a novel framework for training world models on cheap interaction data from virtual environments. 
 -->
-
+<!-- 
 ![GenieRedux](docs/title.gif)
 
-![GenieRedux](docs/models.png)
+![GenieRedux](docs/models.png) -->
 </div>
+
+⚠️⚠️⚠️ <b> Our codebase for <b>"Exploration-Driven Generative Interactive Environments" is coming here soon!</b>
+
+⚠️⚠️⚠️ <b>In the mean time, we provide our base GenieRedux and GenieRedux-G implementations (without architectural and loss improvements), as presented in our NeurIPS'24 paper ["Learning Generative Interactive Environments by Trained Agent Exploration"](https://nsavov.github.io/GenieRedux/)</b>. In the future, this implementation will remain in the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch.
+
 <b>GenieRedux</b> is a complete open-source Pytorch implementation of the <b>Genie</b> world model introduced by Google DeepMind. Given a sequence of frames and actions from an environment, the model predicts the visual outcome of executing the actions, thus serving as environment simulators. The model has a Latent Action Model that predicts the actions in a self-supervised manner.
 
 <b>GenieRedux-G</b> (Guided) is a version of GenieRedux, adapted for use with virtual environments and agents. In contrast to GenieRedux, this guided version takes its actions from an agent rather than predicting them from unnanotated data of human demonstrations (datasets which are costly to obtain and curate).
