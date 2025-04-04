@@ -6,7 +6,7 @@
 This is the official repository of <b>"Exploration-Driven Generative Interactive Environments, CVPR'25"</b>.
 
 [![Website](docs/badges/badge_project_page.svg)](https://insait-institute.github.io/GenieRedux/)
-[![Paper](docs/badges/badge_pdf.svg)]() 
+[![Paper](docs/badges/badge_pdf.svg)](https://arxiv.org/pdf/2504.02515v1) 
 <!-- [![Models](docs/badges/badge_models.svg)](https://huggingface.co/INSAIT-Institute/GenieRedux)  -->
 
 Authors: [Nedko Savov](https://insait.ai/nedko-savov/), [Naser Kazemi](https://naser-kazemi.github.io/), [Mohammad Mahdi](https://insait.ai/mohammadmahdi-ghahramani-2/), [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Xi Wang](https://xiwang1212.github.io/homepage/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/)
@@ -332,6 +332,15 @@ The above command will evaluate the model at the specified path using the action
 We thank the authors of the [Phenaki CViViT implementation](https://github.com/obvious-research/phenaki-cvivit), which served as great initial reference point for our project.
 
 If you find our work useful, please cite our paper, as well as the original Genie world model (Bruce et. al. 2024).
+
+```bibtex
+@inproceedings{savov2024exploration,
+  title={Exploration-Driven Generative Interactive Environments},
+  author={Savov, Nedko and Kazemi, Naser and Mahdi, Mohammad and Paudel, Danda Pani and Wang, Xi and Gool, Luc Van},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  year={2025}
+}
+```
 
 ```bibtex
 @inproceedings{kazemi2024learning,
