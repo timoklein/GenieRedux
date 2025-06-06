@@ -15,6 +15,9 @@ train:
   batch_size: 3
   grad_accum: 4
 
+dynamics:
+  max_seq_len: 8000
+
 tokenizer_fpath: ${config.train.save_root_dpath}/tokenizer/tokenizer/model-150000.pt
 
 eval:

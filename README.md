@@ -1,61 +1,76 @@
 <div align="center">
 
+
 # GenieRedux
 
-This is the official repository of <b>"Learning Generative Interactive Environments by Trained Agent Exploration"</b>.
+This is the official repository of <b>"Exploration-Driven Generative Interactive Environments, CVPR'25"</b>.
 
+[![Website](docs/badges/badge_project_page.svg)](https://insait-institute.github.io/GenieRedux/)
+[![Paper](docs/badges/badge_pdf.svg)](https://arxiv.org/pdf/2504.02515v1) 
+<!-- [![Models](docs/badges/badge_models.svg)](https://huggingface.co/INSAIT-Institute/GenieRedux)  -->
+
+Authors: [Nedko Savov](https://insait.ai/nedko-savov/), [Naser Kazemi](https://naser-kazemi.github.io/), [Mohammad Mahdi](https://insait.ai/mohammadmahdi-ghahramani-2/), [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Xi Wang](https://xiwang1212.github.io/homepage/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/)
+
+
+<!-- 
 [![Website](docs/badges/badge_project_page.svg)](https://nsavov.github.io/GenieRedux/)
 [![Paper](docs/badges/badge_pdf.svg)](https://arxiv.org/pdf/2409.06445) 
 [![Models](docs/badges/badge_models.svg)](https://huggingface.co/INSAIT-Institute/GenieRedux) 
 
-Authors: [Naser Kazemi](https://naser-kazemi.github.io/)\*, [Nedko Savov](https://insait.ai/nedko-savov/)\*, [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/)
+Authors: [Naser Kazemi](https://naser-kazemi.github.io/)\*, [Nedko Savov](https://insait.ai/nedko-savov/)\*, [Danda Pani Paudel](https://insait.ai/dr-danda-paudel/), [Luc Van Gool](https://insait.ai/prof-luc-van-gool/) -->
 
+<!-- 
+Keywords: Genie, Genie world model, Generative Interactive Environments, Genie Implementation, Open Source, RL exploration, world models, virtual environments, data-drive simulator.
+This repository contains a Pytorch open-source implementation of the Genie world model (Bruce et. al.) by Google DeepMind, as well as a novel framework for training world models on cheap interaction data from virtual environments. 
+-->
+<!-- 
 ![GenieRedux](docs/title.gif)
 
-![GenieRedux](docs/models.png)
+![GenieRedux](docs/models.png) -->
 </div>
-<b>GenieRedux</b> is a complete open-source Pytorch implementation of the <b>Genie</b> world model introduced by Google Research. Given a sequence of frames and actions from an environment, the model predicts the visual outcome of executing the actions, thus serving as environment simulators. The model has a Latent Action Model that predicts the actions in a self-supervised manner.
+
+⚠️⚠️⚠️ <b> Our codebase for <b>"Exploration-Driven Generative Interactive Environments" is coming here soon!</b>
+
+⚠️⚠️⚠️ <b>In the mean time, we provide our base GenieRedux and GenieRedux-G implementations (without architectural and loss improvements), as presented in our NeurIPS'24 paper ["Learning Generative Interactive Environments by Trained Agent Exploration"](https://nsavov.github.io/GenieRedux/)</b>. In the future, this implementation will remain in the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch.
+
+<b>GenieRedux</b> is a complete open-source Pytorch implementation of the <b>Genie</b> world model introduced by Google DeepMind. Given a sequence of frames and actions from an environment, the model predicts the visual outcome of executing the actions, thus serving as environment simulators. The model has a Latent Action Model that predicts the actions in a self-supervised manner.
 
 <b>GenieRedux-G</b> (Guided) is a version of GenieRedux, adapted for use with virtual environments and agents. In contrast to GenieRedux, this guided version takes its actions from an agent rather than predicting them from unnanotated data of human demonstrations (datasets which are costly to obtain and curate).
 
 We train and evaluate the models on the CoinRun case study, as advised by the Genie paper. We provide an easy data generation utility and an efficient data handler for training. In addition, we provide evaluation scripts.
 
-<b>Model weights are now available!</b>
-
 ## Installation
 <b>Prerequisites:</b>
 - Ensure you have Conda installed on your system. You can download and install Conda from the [official website](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
-
-<b> Data Generation Environment Installation. </b>
-This will install the `coinrun` environment which enables the use of the Coinrun environment:
-```bash
-bash data_generation/external/install_coinrun.sh
-conda activate coinrun
-```
-
-<b>GenieRedux Environment  Installation:</b>
-1. Clone the repository:
-
+1. <b>Clone the repository.</b>
    ```shell
-   git clone https://github.com/insait-institute/GenieRedux.git
-   cd GenieRedux
+    git clone https://github.com/insait-institute/GenieRedux.git
+    cd GenieRedux
    ```
 
-2. Set up the Python environment:
+2. <b> Data Generation Environment Installation. </b>
+  This will install the `coinrun` environment which enables the use of the Coinrun environment:
+   ```shell
+    bash data_generation/external/install_coinrun.sh
+    conda activate coinrun
+   ```
+
+3. <b>GenieRedux Environment  Installation.</b>
+  Set up the Python environment:
    ```shell
     conda env create -f genie_redux_env.yaml
     conda activate genie_redux
    ``` 
    This script will create a conda environment named `genie_redux` and install all the required dependencies, inclduing `PyTorch-Cuda 12.1`, `Hydra`, and `Accelerate`.
 
-Note: This implementation is tested on Linux-64 with Python 3.10 and Conda package manager.
+   Note: This implementation is tested on Linux-64 with Python 3.10 and Conda package manager.
 
-<b>Model Weights Download:</b>
-To download the Tokenizer, GeniRedux and GenieRedux-G weights, run:
-```bash
-python download_models.py
-```
+4. <b>Model Weights Download:</b>
+  To download the Tokenizer, GeniRedux and GenieRedux-G weights, run:
+   ```bash
+    python download_models.py
+   ```
 
 This will create a `checkpoints` directory and store the weights:
 - Tokenizer - `checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt`
@@ -312,13 +327,35 @@ The above command will evaluate the model at the specified path using the action
     - Visualizing the model's predictions with ground truth or custom input actions.
 - **`optimizer.py`**: Custom optimization routines.
 
+## Citations
 
-## Citation
+We thank the authors of the [Phenaki CViViT implementation](https://github.com/obvious-research/phenaki-cvivit), which served as great initial reference point for our project.
+
+If you find our work useful, please cite our paper, as well as the original Genie world model (Bruce et. al. 2024).
+
+```bibtex
+@inproceedings{savov2024exploration,
+  title={Exploration-Driven Generative Interactive Environments},
+  author={Savov, Nedko and Kazemi, Naser and Mahdi, Mohammad and Paudel, Danda Pani and Wang, Xi and Gool, Luc Van},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  year={2025}
+}
+```
 
 ```bibtex
 @inproceedings{kazemi2024learning,
   title={Learning Generative Interactive Environments By Trained Agent Exploration},
   author={Kazemi, Naser and Savov, Nedko and Paudel, Danda Pani and Van Gool, Luc},
   booktitle={NeurIPS 2024 Workshop on Data-driven and Differentiable Simulations, Surrogates, and Solvers}
+}
+```
+
+```bibtex
+@inproceedings{bruce2024genie,
+    title={Genie: Generative Interactive Environments},
+    author={Jake Bruce and Michael D Dennis and Ashley Edwards and Jack Parker-Holder and Yuge Shi and Edward Hughes and Matthew Lai and Aditi Mavalankar and Richie Steigerwald and Chris Apps and Yusuf Aytar and Sarah Maria Elisabeth Bechtle and Feryal Behbahani and Stephanie C.Y. Chan and Nicolas Heess and Lucy Gonzalez and Simon Osindero and Sherjil Ozair and Scott Reed and Jingwei Zhang and Konrad Zolna and Jeff Clune and Nando de Freitas and Satinder Singh and Tim Rockt{\"a}schel},
+    booktitle={Forty-first International Conference on Machine Learning},
+    year={2024},
+    url={https://openreview.net/forum?id=bJbSbJskOS}
 }
 ```

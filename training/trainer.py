@@ -204,6 +204,7 @@ class Trainer(nn.Module):
                 log_with="wandb",
                 kwargs_handlers=[kwargs],
                 mixed_precision="bf16",
+                gradient_accumulation_steps=grad_accum_every,
             )
 
         self.evaluator = Evaluator(device=self.accelerator.device)
@@ -464,7 +465,7 @@ class Trainer(nn.Module):
 
             # Compute loss with automatic mixed precision
             with conditional_with(
-                self.accelerator.no_sync(self.model), self.grad_accum_every != i - 1
+                self.accelerator.no_sync(self.model), self.grad_accum_every != i + 1
             ):
                 with self.accelerator.autocast():
                     loss = self.model(
@@ -483,10 +484,7 @@ class Trainer(nn.Module):
                     self.model.parameters(), self.max_grad_norm
                 )
 
-            total_loss += loss.item() / self.grad_accum_every
-
-            # Log training loss
-            accum_log(logs, {"train_loss": loss.item() / self.grad_accum_every})
+            total_loss += loss / self.grad_accum_every
 
         # Optimizer step
         self.optim.step()
@@ -495,9 +493,12 @@ class Trainer(nn.Module):
         # Learning rate scheduler step
         self.scheduler_optim.step(self.step)
 
+        # Log training loss
+        accum_log(logs, {"train_loss": total_loss.item()})
+
         # Log learning rate and Loss
         if step % self.wandb_log_every == 0:
-            self.accelerator.log({"Train loss": total_loss}, step=step)
+            self.accelerator.log({"Train loss": total_loss.item()}, step=step)
             self.accelerator.log({"lr": self.optim.param_groups[0]["lr"]}, step=step)
 
         # Validation
