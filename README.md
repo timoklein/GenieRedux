@@ -3,7 +3,7 @@
 
 # GenieRedux
 
-This is the official repository of <b>"Exploration-Driven Generative Interactive Environments, CVPR'25"</b>.
+This is the official repository of <b>Exploration-Driven Generative Interactive Environments, CVPR'25</b>.
 
 [![Website](docs/badges/badge_project_page.svg)](https://insait-institute.github.io/GenieRedux/)
 [![Paper](docs/badges/badge_pdf.svg)](https://arxiv.org/pdf/2504.02515v1) 
@@ -29,15 +29,31 @@ This repository contains a Pytorch open-source implementation of the Genie world
 ![GenieRedux](docs/models.png) -->
 </div>
 
-⚠️⚠️⚠️ <b> Our codebase for <b>"Exploration-Driven Generative Interactive Environments" is coming here soon!</b>
+<!-- ⚠️⚠️⚠️ -->
 
-⚠️⚠️⚠️ <b>In the mean time, we provide our base GenieRedux and GenieRedux-G implementations (without architectural and loss improvements), as presented in our NeurIPS'24 paper ["Learning Generative Interactive Environments by Trained Agent Exploration"](https://nsavov.github.io/GenieRedux/)</b>. In the future, this implementation will remain in the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch.
+🚧🚧🚧 We are currently rolling out our codebase for <b>"Exploration-Driven Generative Interactive Environments"</b>!
 
-<b>GenieRedux</b> is a complete open-source Pytorch implementation of the <b>Genie</b> world model introduced by Google DeepMind. Given a sequence of frames and actions from an environment, the model predicts the visual outcome of executing the actions, thus serving as environment simulators. The model has a Latent Action Model that predicts the actions in a self-supervised manner.
+We present a framework for training multi-environment world models spanning hundreds of environments with different visuals and actions. Our training is cost-effective, as we make use of automatic collection from virtual environments instead of hand-curated datasets of human demonstrations. It consists of 3 components:
 
-<b>GenieRedux-G</b> (Guided) is a version of GenieRedux, adapted for use with virtual environments and agents. In contrast to GenieRedux, this guided version takes its actions from an agent rather than predicting them from unnanotated data of human demonstrations (datasets which are costly to obtain and curate).
+* <b>RetroAct</b> - a dataset of 974 annotated retro game environments - behavior, camera view, motion axis and controls
+* <b> GenieRedux-G </b> - a multi-environment transformer world model, adapted for virtual environments and an enhanced version of GenieRedux - our open version of the Genie world model (Bruce et. al.).
+* <b> AutoExplore Agent</b> - an exploration agent that explores environments entirely based on the dynamics prediction uncertainty of GenieRedux, escaping the need for an environment-specific reward and providing diverse training data for our world model.
 
-We train and evaluate the models on the CoinRun case study, as advised by the Genie paper. We provide an easy data generation utility and an efficient data handler for training. In addition, we provide evaluation scripts.
+Our original GenieRedux and GenieRedux-G implementations on the CoinRun test case study, as provided in our [NeurIPS'24 D3S3 paper](https://nsavov.github.io/GenieRedux/) - , are provided on the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch.
+
+In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
+
+## Code Release
+
+Features and components will roll out over the next few weeks.
+
+- [x] RetroAct Behavior
+- [-] RetroAct Control
+- [x] Data Generation
+- [x] GenieRedux-G training
+- [ ] AutoExplore Agent Training
+- [ ] AutoExplore Agent Data Generation
+- [x] GenieRedux-G Evaluation
 
 ## Installation
 <b>Prerequisites:</b>
@@ -50,11 +66,13 @@ We train and evaluate the models on the CoinRun case study, as advised by the Ge
    ```
 
 2. <b> Data Generation Environment Installation. </b>
-  This will install the `coinrun` environment which enables the use of the Coinrun environment:
+  This will install the `retro_datagen` environment which enables the use of the Stable Retro environments:
    ```shell
-    bash data_generation/external/install_coinrun.sh
-    conda activate coinrun
+    conda env create -f data_generation/retro_env.yml
+    conda activate retro_datagen
    ```
+
+   Import the game ROMs following the [Stable Retro instructions](https://github.com/Farama-Foundation/stable-retro?tab=readme-ov-file#documentation)
 
 3. <b>GenieRedux Environment  Installation.</b>
   Set up the Python environment:
@@ -62,20 +80,9 @@ We train and evaluate the models on the CoinRun case study, as advised by the Ge
     conda env create -f genie_redux_env.yaml
     conda activate genie_redux
    ``` 
-   This script will create a conda environment named `genie_redux` and install all the required dependencies, inclduing `PyTorch-Cuda 12.1`, `Hydra`, and `Accelerate`.
+   This script will create a conda environment named `genie_redux`.
 
    Note: This implementation is tested on Linux-64 with Python 3.10 and Conda package manager.
-
-4. <b>Model Weights Download:</b>
-  To download the Tokenizer, GeniRedux and GenieRedux-G weights, run:
-   ```bash
-    python download_models.py
-   ```
-
-This will create a `checkpoints` directory and store the weights:
-- Tokenizer - `checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt`
-- GenieRedux - `checkpoints/GenieRedux_CoinRun_250mln_v1.0/model.pt`
-- GenieRedux-G - `checkpoints/GenieRedux_Guided_CoinRun_80mln_v1.0/model.pt`
 
 ## Quickstart
 
@@ -84,36 +91,15 @@ This will create a `checkpoints` directory and store the weights:
 Initial setup:
 ```
 cd data_generation
-conda activate coinrun
+conda activate retro_datagen
 ```
 
-To generate a training dataset of 10k instances (episodes), with length at most 500 frames, and using a random agent, run:
+To generate all datasets (saved in `data_generation/datasets/`), run:
 
 ```bash
 python generate.py
-```
-
-This will generate a dataset in `data_generation/datasets/coinrun_v2.0.0`.
-
-To generate a test dataset of 10k instances (episodes), with length at most 500 frames, and using a random agent, run:
-
-```bash
-python generate.py --config configs/data_gen_test_set.json
-```
-
-This will generate a dataset in `data_generation/datasets/coinrun_v2.0.0_test`.
-
-### Using The Provided Weights
-To run evaluation on the provided weights of `GenieRedux`:
-
-```
-bash run.sh --config=genie_redux.yaml --mode=eval --eval.action_to_take=-1 --eval.inference_method=one_go --eval.model_fpath=checkpoints/GenieRedux_CoinRun_250mln_v1.0/model.pt --tokenizer_fpath=checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt --dynamics.max_seq_len=8000 --lam.max_seq.len=8000
-```
-
-For `GenieRedux-G`:
-
-```
-bash run.sh --config=genie_redux_guided.yaml --mode=eval --eval.action_to_take=-1 --eval.inference_method=one_go --eval.model_fpath=checkpoints/GenieRedux_Guided_CoinRun_80mln_v1.0/model.pt --tokenizer_fpath=checkpoints/GenieRedux_Tokenizer_CoinRun_100mln_v1.0/model.pt
+python generate.py --config configs/data_gen_retro_control.json
+python generate.py --config configs/data_gen_retro_control_test_set.json
 ```
 
 ### Training GenieRedux
@@ -334,19 +320,13 @@ We thank the authors of the [Phenaki CViViT implementation](https://github.com/o
 If you find our work useful, please cite our paper, as well as the original Genie world model (Bruce et. al. 2024).
 
 ```bibtex
-@inproceedings{savov2024exploration,
-  title={Exploration-Driven Generative Interactive Environments},
-  author={Savov, Nedko and Kazemi, Naser and Mahdi, Mohammad and Paudel, Danda Pani and Wang, Xi and Gool, Luc Van},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  year={2025}
-}
-```
-
-```bibtex
-@inproceedings{kazemi2024learning,
-  title={Learning Generative Interactive Environments By Trained Agent Exploration},
-  author={Kazemi, Naser and Savov, Nedko and Paudel, Danda Pani and Van Gool, Luc},
-  booktitle={NeurIPS 2024 Workshop on Data-driven and Differentiable Simulations, Surrogates, and Solvers}
+@InProceedings{Savov_2025_CVPR,
+    author    = {Savov, Nedko and Kazemi, Naser and Mahdi, Mohammad and Paudel, Danda Pani and Wang, Xi and Van Gool, Luc},
+    title     = {Exploration-Driven Generative Interactive Environments},
+    booktitle = {Proceedings of the Computer Vision and Pattern Recognition Conference (CVPR)},
+    month     = {June},
+    year      = {2025},
+    pages     = {27597-27607}
 }
 ```
 
