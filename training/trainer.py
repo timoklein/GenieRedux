@@ -1,43 +1,29 @@
 from contextlib import contextmanager
 from pathlib import Path
-from einops import rearrange
-from beartype import beartype
 
 import torch
-from torch import nn
-from torch.utils.data import DataLoader, Subset
-
-
+import wandb
+from accelerate import Accelerator, DistributedType
+from accelerate.utils import DistributedDataParallelKwargs
+from beartype import beartype
 from einops import rearrange
+from PIL import Image
+from torch import nn
+from torch.utils.data import DataLoader, Dataset, Subset
 from tqdm import tqdm
-
-from models.genie_redux import GenieRedux, GenieReduxGuided
-from models.lam import LatentActionModel
-from models.tokenizer import Tokenizer
-from training.optimizer import get_optimizer, LinearWarmup_CosineAnnealing
 
 from data.data import (
     video_tensor_to_gif,
     video_tensor_to_pil_images,
-    EnvironmentDataset as Dataset,
 )
-
-
-from accelerate import Accelerator, DistributedType
-from accelerate.utils import DistributedDataParallelKwargs
-
-import wandb
-
+from models.genie_redux import GenieRedux, GenieReduxGuided
+from models.lam import LatentActionModel
+from models.tokenizer import Tokenizer
+from tools.logger import getLogger
 from training.evaluation import Evaluator
+from training.optimizer import LinearWarmup_CosineAnnealing, get_optimizer
 
-import torch
-
-from PIL import Image
-
-from utils.utils import debug
-
-
-# helpers
+log = getLogger(__name__)
 
 
 def exists(val):

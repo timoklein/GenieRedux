@@ -1,25 +1,23 @@
+import math
 import os
 
 # set the current working directory as the project root directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 import torch
+from accelerate import Accelerator
+from accelerate.utils import DistributedDataParallelKwargs
+from prettytable import PrettyTable
+from torch.utils.data import Subset
 
 from data.data import (
     DatasetOutputFormat,
-    EnvironmentDataset,
+    MultiEnvironmentDataset,
     TransformsGenerator,
 )
-
-
 from models import construct_model
 from training import Trainer
-
-import torch.distributed as dist
-
 from utils.utils import debug
-
-from prettytable import PrettyTable
 
 
 def count_parameters(model):
@@ -39,45 +37,82 @@ def count_parameters(model):
 
 
 def run(args):
-
-    dataset_folder = (
-        f"{args.train.dataset_root_dpath}/{args.train.dataset_name}/{args.train.dataset_name}"
-    )
-    cache_dpath = args.train.wandb_dpath if args.train.wandb_dpath != "./wandb" else "./cache"
+    dataset_folder = f"{args.train.dataset_root_dpath}/{args.train.dataset_name}"
+    # cache_dpath = (
+    #     args.train.wandb_dpath if args.train.wandb_dpath != "./wandb" else "./cache"
+    # )
 
     model = construct_model(args)
+    num_frames = args.train.num_frames
+    n_workers = args.train.n_data_workers
+    n_total_samples = args.train.n_total_samples
+    n_envs = args.train.n_envs
+
+    kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+    accelerator = Accelerator(
+        cpu=False,
+        log_with="wandb",
+        kwargs_handlers=[kwargs],
+        mixed_precision="bf16",
+    )
 
     transforms = TransformsGenerator.get_final_transforms(model.image_size, None)
-    train_ds = EnvironmentDataset(
-        dataset_folder,
-        seq_length_input=args.train.num_frames - 1,
-        seq_step=1,
-        split_type="instance",
-        split="train",
-        transform=transforms["train"],
-        format=DatasetOutputFormat.IVG,
-        enable_cache=True,
-        cache_dpath=f"{cache_dpath}/cache/{args.train.dataset_name}",
-    )
 
-    valid_ds = EnvironmentDataset(
-        dataset_folder,
-        seq_length_input=args.train.num_frames - 1,
-        seq_step=args.train.seq_step,
-        split_type="instance",
-        split="validation",
-        transform=transforms["train"],
-        format=DatasetOutputFormat.IVG,
-        enable_cache=True,
-        cache_dpath=f"{cache_dpath}/cache/{args.train.dataset_name}",
-    )
-    
+    def get_data_handlers(n_workers=8, n_envs=0, n_total_samples=10000):
+        train_ds_mev = MultiEnvironmentDataset(
+            dataset_folder,
+            seq_length_input=num_frames - 1,
+            seq_step=1,
+            split_type="session",
+            split="train",
+            transform=transforms["train"],
+            format=DatasetOutputFormat.IVG,
+            enable_cache=False,
+            # cache_dpath=f"{cache_dir}/cache/{dataset_name}",
+            n_workers=n_workers,
+            n_envs=n_envs,
+        )
+
+        n_samples_valid = math.ceil(n_total_samples / train_ds_mev.n_datasets)
+
+        valid_ds_mev = MultiEnvironmentDataset(
+            dataset_folder,
+            seq_length_input=num_frames - 1,
+            seq_step=20,
+            split_type="session",
+            split="validation",
+            transform=transforms["train"],
+            format=DatasetOutputFormat.IVG,
+            enable_cache=False,
+            # cache_dpath=f"{cache_dir}/cache/{args.dataset}",
+            n_workers=n_workers,
+            n_envs=n_envs,
+            n_samples=n_samples_valid,
+        )
+        valid_ds_mev = Subset(valid_ds_mev, range(n_total_samples))
+
+        return train_ds_mev, valid_ds_mev
+
+    # check if it is the main thread
+    if accelerator.is_main_process:
+        train_ds, valid_ds = get_data_handlers(
+            n_workers=n_workers, n_total_samples=n_total_samples, n_envs=n_envs
+        )
+
+    accelerator.wait_for_everyone()
+
+    if not accelerator.is_main_process:
+        train_ds, valid_ds = get_data_handlers(
+            n_workers=n_workers, n_total_samples=n_total_samples, n_envs=n_envs
+        )
+
     save_dpath = f"{args.train.save_root_dpath}/{args.model}/{args.train.wandb_name}"
 
     trainer = Trainer(
-        model,
-        args.train.batch_size,
-        (train_ds, valid_ds),
+        model=model,
+        batch_size=args.train.batch_size,
+        dataset=(train_ds, valid_ds),
+        accelerator=accelerator,
         num_frames=args.train.num_frames,
         sample_num_frames=args.train.sample_num_frames,
         wandb_mode=args.train.wandb_mode,
@@ -95,14 +130,14 @@ def run(args):
         save_dpath=save_dpath,
         save_model_every=args.train.save_model_every,
         wandb_dpath=args.train.wandb_dpath,
+        max_valid_size=args.train.max_valid_size,
         validate_every=args.train.validate_every,
         train_config=args,
     )
 
     torch.cuda.empty_cache()
 
-    if trainer.accelerator.is_main_process:
-
+    if accelerator.is_main_process:
         debug("config: ", args)
         print("GenieRedux training is starting...\n")
         print("Dataset : ", dataset_folder)
@@ -115,5 +150,3 @@ def run(args):
 
     model.train()
     trainer.train()
-
-    dist.destroy_process_group()

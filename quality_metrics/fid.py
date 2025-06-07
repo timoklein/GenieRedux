@@ -18,7 +18,6 @@ import torch
 from torch import Tensor
 from torch.nn import Module
 from torch.nn.functional import adaptive_avg_pool2d
-
 from torchmetrics.metric import Metric
 from torchmetrics.utilities.imports import (
     _MATPLOTLIB_AVAILABLE,
@@ -26,7 +25,6 @@ from torchmetrics.utilities.imports import (
     _TORCH_GREATER_EQUAL_1_9,
 )
 from torchmetrics.utilities.plot import _AX_TYPE, _PLOT_OUT_TYPE
-
 
 __doctest_skip__ = (
     ["FrechetInceptionDistance.__init__"] if not _TORCH_GREATER_EQUAL_1_9 else []
