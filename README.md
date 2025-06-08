@@ -30,6 +30,28 @@ This repository contains a Pytorch open-source implementation of the Genie world
 </div>
 
 <!-- ⚠️⚠️⚠️ -->
+<div style="width: 100%; max-width: 800px; margin: auto;">
+  <!--
+    Flex container: two children, each 50% of the wrapper
+  -->
+  <div style="display: flex; gap: 0.5em;">
+    <img
+      src="docs/genieredux-g-pretraining-replicate.gif"
+      alt="Replicate"
+      style="flex: 1 1 50%; height: auto; width: auto; max-width: 40.0%;"
+    />
+    <img
+      src="docs/genieredux-g-explore.gif"
+      alt="Explore"
+      style="flex: 1 1 50%; height: auto; width: auto; max-width: 60.0%;"
+    />
+  </div>
+</div>
+
+
+
+
+
 
 🚧🚧🚧 We are currently rolling out our codebase for <b>"Exploration-Driven Generative Interactive Environments"</b>!
 
@@ -53,7 +75,7 @@ Features and components will roll out over the next few weeks.
 - [x] GenieRedux-G training
 - [ ] AutoExplore Agent Training
 - [ ] AutoExplore Agent Data Generation
-- [x] GenieRedux-G Evaluation
+- [] GenieRedux-G Evaluation
 
 ## Installation
 <b>Prerequisites:</b>
@@ -108,8 +130,6 @@ Before we start, we set up the environment:
 ```bash
 conda activate genie_redux
 ```
-
-We trained GenieRedux and GenieRedux-G on 7 A100 GPUs, with batch size 84. We provide the settings as we used them in the following instructions, the parameters can be changed according to GPU and memory limitations.
 
 #### Tokenizer
 To train the tokenizer for on the generated dataset (for 150k iterations), run:
