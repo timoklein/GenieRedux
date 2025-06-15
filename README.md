@@ -29,15 +29,38 @@ This repository contains a Pytorch open-source implementation of the Genie world
 ![GenieRedux](docs/models.png) -->
 </div>
 
-⚠️⚠️⚠️ <b> Our codebase for <b>"Exploration-Driven Generative Interactive Environments" is coming here soon!</b>
+<div style="width: 100%; max-width: 800px; margin: auto;">
+  <!--
+    Flex container: two children, each 50% of the wrapper
+  -->
+  <div style="display: flex; gap: 0.5em;">
+    <img
+      src="docs/genieredux-g-pretraining-replicate.gif"
+      alt="Replicate"
+      style="flex: 1 1 50%; height: auto; width: auto; max-width: 40.0%;"
+    />
+    <img
+      src="docs/genieredux-g-explore.gif"
+      alt="Explore"
+      style="flex: 1 1 50%; height: auto; width: auto; max-width: 60.0%;"
+    />
+  </div>
+</div>
 
-⚠️⚠️⚠️ <b>In the mean time, we provide our base GenieRedux and GenieRedux-G implementations (without architectural and loss improvements), as presented in our NeurIPS'24 paper ["Learning Generative Interactive Environments by Trained Agent Exploration"](https://nsavov.github.io/GenieRedux/)</b>. In the future, this implementation will remain in the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch.
+We present a framework for training multi-environment world models spanning hundreds of environments with different visuals and actions. Our training is cost-effective, as we make use of automatic collection from virtual environments instead of hand-curated datasets of human demonstrations. It consists of 3 components:
 
-<b>GenieRedux</b> is a complete open-source Pytorch implementation of the <b>Genie</b> world model introduced by Google DeepMind. Given a sequence of frames and actions from an environment, the model predicts the visual outcome of executing the actions, thus serving as environment simulators. The model has a Latent Action Model that predicts the actions in a self-supervised manner.
+* <b>RetroAct</b> - a dataset of 974 annotated retro game environments - behavior, camera view, motion axis and controls
+* <b> GenieRedux-G </b> - a multi-environment transformer world model, adapted for virtual environments and an enhanced version of GenieRedux - our open version of the Genie world model (Bruce et. al.).
+* <b> AutoExplore Agent</b> - an exploration agent that explores environments entirely based on the dynamics prediction uncertainty of GenieRedux, escaping the need for an environment-specific reward and providing diverse training data for our world model.
 
-<b>GenieRedux-G</b> (Guided) is a version of GenieRedux, adapted for use with virtual environments and agents. In contrast to GenieRedux, this guided version takes its actions from an agent rather than predicting them from unnanotated data of human demonstrations (datasets which are costly to obtain and curate).
+<!-- Our original GenieRedux and GenieRedux-G implementations on the CoinRun test case study, as provided in our [NeurIPS'24 D3S3 paper](https://nsavov.github.io/GenieRedux/) - , are provided on the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch. -->
 
-We train and evaluate the models on the CoinRun case study, as advised by the Genie paper. We provide an easy data generation utility and an efficient data handler for training. In addition, we provide evaluation scripts.
+In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
+
+
+🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! In the mean time, you will find GenieRedux and GenieRedux-G, with training code on the CoinRun test case (as described [here](https://nsavov.github.io/GenieRedux/)), including pretrained model weights.
+
+![CoinRun](docs/title.gif)
 
 ## Installation
 <b>Prerequisites:</b>
