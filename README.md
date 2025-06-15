@@ -357,11 +357,14 @@ We thank the authors of the [Phenaki CViViT implementation](https://github.com/o
 If you find our work useful, please cite our paper, as well as the original Genie world model (Bruce et. al. 2024).
 
 ```bibtex
-@inproceedings{savov2024exploration,
-  title={Exploration-Driven Generative Interactive Environments},
-  author={Savov, Nedko and Kazemi, Naser and Mahdi, Mohammad and Paudel, Danda Pani and Wang, Xi and Gool, Luc Van},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  year={2025}
+
+@InProceedings{Savov_2025_CVPR,
+    author    = {Savov, Nedko and Kazemi, Naser and Mahdi, Mohammad and Paudel, Danda Pani and Wang, Xi and Van Gool, Luc},
+    title     = {Exploration-Driven Generative Interactive Environments},
+    booktitle = {Proceedings of the Computer Vision and Pattern Recognition Conference (CVPR)},
+    month     = {June},
+    year      = {2025},
+    pages     = {27597-27607}
 }
 ```
 
