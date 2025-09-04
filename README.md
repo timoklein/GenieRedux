@@ -29,7 +29,6 @@ This repository contains a Pytorch open-source implementation of the Genie world
 ![GenieRedux](docs/models.png) -->
 </div>
 
-<!-- ⚠️⚠️⚠️ -->
 <div style="width: 100%; max-width: 800px; margin: auto;">
   <!--
     Flex container: two children, each 50% of the wrapper
@@ -48,34 +47,20 @@ This repository contains a Pytorch open-source implementation of the Genie world
   </div>
 </div>
 
-
-
-
-
-
-🚧🚧🚧 We are currently rolling out our codebase for <b>"Exploration-Driven Generative Interactive Environments"</b>!
-
 We present a framework for training multi-environment world models spanning hundreds of environments with different visuals and actions. Our training is cost-effective, as we make use of automatic collection from virtual environments instead of hand-curated datasets of human demonstrations. It consists of 3 components:
 
 * <b>RetroAct</b> - a dataset of 974 annotated retro game environments - behavior, camera view, motion axis and controls
 * <b> GenieRedux-G </b> - a multi-environment transformer world model, adapted for virtual environments and an enhanced version of GenieRedux - our open version of the Genie world model (Bruce et. al.).
 * <b> AutoExplore Agent</b> - an exploration agent that explores environments entirely based on the dynamics prediction uncertainty of GenieRedux, escaping the need for an environment-specific reward and providing diverse training data for our world model.
 
-Our original GenieRedux and GenieRedux-G implementations on the CoinRun test case study, as provided in our [NeurIPS'24 D3S3 paper](https://nsavov.github.io/GenieRedux/) - , are provided on the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch.
+<!-- Our original GenieRedux and GenieRedux-G implementations on the CoinRun test case study, as provided in our [NeurIPS'24 D3S3 paper](https://nsavov.github.io/GenieRedux/) - , are provided on the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch. -->
 
 In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
 
-## Code Release
 
-Features and components will roll out over the next few weeks.
+🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! In the mean time, you will find GenieRedux and GenieRedux-G, with training code on the CoinRun test case (as described [here](https://nsavov.github.io/GenieRedux/)), including pretrained model weights.
 
-- [x] RetroAct Behavior
-- [-] RetroAct Control
-- [x] Data Generation
-- [x] GenieRedux-G training
-- [ ] AutoExplore Agent Training
-- [ ] AutoExplore Agent Data Generation
-- [] GenieRedux-G Evaluation
+![CoinRun](docs/title.gif)
 
 ## Installation
 <b>Prerequisites:</b>
@@ -347,6 +332,14 @@ If you find our work useful, please cite our paper, as well as the original Geni
     month     = {June},
     year      = {2025},
     pages     = {27597-27607}
+}
+```
+
+```bibtex
+@inproceedings{kazemi2024learning,
+  title={Learning Generative Interactive Environments By Trained Agent Exploration},
+  author={Kazemi, Naser and Savov, Nedko and Paudel, Danda Pani and Van Gool, Luc},
+  booktitle={NeurIPS 2024 Workshop on Data-driven and Differentiable Simulations, Surrogates, and Solvers}
 }
 ```
 
