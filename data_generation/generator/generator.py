@@ -165,8 +165,11 @@ class EnvironmentDataGenerator:
         # Set up the data directory file structure
         env_dname = env_connector.name + "_v" + env_connector.version
         dname = env_connector.get_name() + "_v" + env_connector.version
-        if config["dname"] != "":
-            dname += "_" + config["dname"]
+        # Append optional suffix to both parent and leaf names when provided
+        suffix = config.get("dname", "")
+        if suffix != "":
+            env_dname += "_" + suffix
+            dname += "_" + suffix
         self.name = dname
         self.data_dpath = osp.join(config["data_dpath"], env_dname, dname)
         self.fs: DatasetFileStructure = DatasetFileStructure(self.data_dpath)

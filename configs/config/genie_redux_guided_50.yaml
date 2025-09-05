@@ -1,0 +1,35 @@
+defaults:
+  - default
+  - /tokenizer/tokenizer
+  - /dynamics/dynamics
+  - _self_
+
+model: genie_redux_guided
+mode: train
+
+dynamics:
+  use_token: true
+  is_guided: true
+
+train:
+  dataset_root_dpath: "data_generation/datasets"
+  dataset_name: "retro_act_v0.0.0_g50"
+  wandb_name: "genie_redux_guided"
+  num_train_steps: 100000
+  batch_size: 4
+  grad_accum: 3
+  n_data_workers: 46
+  n_total_samples: 50
+  n_envs: 0
+  max_valid_size: 50
+  use_decoder_loss: false
+
+model_fpath: ${config.train.save_root_dpath}/genie_redux_guided_pretrain/genie_redux_guided_pretrain/model-180000.pt
+
+eval:
+  dataset_root_dpath: ${config.train.dataset_root_dpath}
+  dataset_name: "${config.train.dataset_name}_test"
+  model_fpath: ${config.train.save_root_dpath}/${config.model}/${config.train.wandb_name}/model-100000.pt
+  eval_control: "yes"
+  n_data_workers: 46
+  n_envs: 0

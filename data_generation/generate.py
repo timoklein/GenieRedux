@@ -88,6 +88,12 @@ if __name__ == "__main__":
                 f"No games found for genre={genre_filter}, motion={motion_filter}, view={view_filter}, platform={platform_filter}",
             )
 
+        # Optionally sort alphabetically and limit to first N titles when requested
+        limit_games = connector_config_retro_act.get("limit_games", None)
+        selected_games = sorted(selected_games)
+        if isinstance(limit_games, int) and limit_games > 0:
+            selected_games = selected_games[:limit_games]
+
         print(
             f"Found {len(selected_games)} games for genre={genre_filter}, motion={motion_filter}, view={view_filter}",
         )

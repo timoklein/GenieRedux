@@ -8,9 +8,7 @@ from einops import rearrange, repeat
 from models.dynamics import Dynamics
 from models.tokenizer import Tokenizer
 from models.lam import LatentActionModel
-
 # helpers
-
 
 def exists(val):
     return val is not None
@@ -41,7 +39,7 @@ def eval_decorator(fn):
         out = fn(model, *args, **kwargs)
         model.train(was_training)
         return out
-
+    
     return inner
 
 
@@ -53,8 +51,8 @@ class GenieReduxGuided(nn.Module):
         *args,
         **kwargs,
     ):
-        if "assert_unguided" not in kwargs or not kwargs["assert_unguided"]:
-            assert dynamics.maskgit.is_guided, "Dynamics must be guided"
+        # if "assert_unguided" not in kwargs or not kwargs["assert_unguided"]:
+        #     assert dynamics.maskgit.is_guided, "Dynamics must be guided"
         super().__init__()
 
         self.tokenizer = tokenizer
@@ -82,7 +80,18 @@ class GenieReduxGuided(nn.Module):
                 config[key] = arguments[key]
         self.config = config
 
-        self.device = next(self.dynamics.parameters()).device
+        self.use_action_embeddings = False
+        if "use_action_embeddings" in kwargs:
+            self.use_action_embeddings = kwargs["use_action_embeddings"]
+
+        ph, pw = tokenizer.patch_size
+        
+        if self.use_action_embeddings:
+            self.action_embeddings = nn.Embedding(
+                num_embeddings=self.dim_actions, embedding_dim=dynamics.maskgit.dim
+            )
+            
+        self.vq_codebook_distances = None
 
     @property
     def patch_height_width(self):
@@ -96,22 +105,34 @@ class GenieReduxGuided(nn.Module):
         state_dict = {"dynamics": self.dynamics.state_dict(*args, **kwargs)}
         return state_dict
 
-    def load_state_dict(self, state_dict, *args, **kwargs):
-        self.dynamics.load_state_dict(state_dict["dynamics"], *args, **kwargs)
+    def load_state_dict(self, state_dict, strict=True, *args, **kwargs):
+        self.dynamics.load_state_dict(state_dict["dynamics"], strict=strict, *args, **kwargs)
 
-    def accelator_log(self, accelerator_tracker_dict, loss):
+    def accelator_log(self, accelerator_tracker_dict, ce_loss, decoder_loss=None):
         if exists(accelerator_tracker_dict):
             train = accelerator_tracker_dict["train"]
             tracker = accelerator_tracker_dict["tracker"]
             step = accelerator_tracker_dict["step"]
+            log_every = accelerator_tracker_dict["log_every"]
+            
+            if step % log_every != 0:
+                return
 
             mode = "Train" if train else "Validation"
             tracker.log(
                 {
-                    f"{mode} cross entropy loss": loss.item(),
+                    f"{mode} Cross Entropy Loss": ce_loss.item(),
                 },
                 step=step,
             )
+            
+            if exists(decoder_loss):
+                tracker.log(
+                    {
+                        f"{mode} Decoder Loss": decoder_loss.item(),
+                    },
+                    step=step,
+                )
 
     def get_tokenizer_codebook_ids(self, videos):
         return self.tokenizer(videos, return_only_codebook_ids=True)
@@ -127,7 +148,10 @@ class GenieReduxGuided(nn.Module):
 
     def get_codes_from_indices(self, indices):
         # convert the indices to action one hot vectors
-        return F.one_hot(indices, num_classes=self.dim_actions).float()
+        if self.use_action_embeddings:
+            return self.action_embeddings(indices)
+        else:
+            return F.one_hot(indices, num_classes=self.dim_actions).float()
 
     @eval_decorator
     @torch.no_grad()
@@ -142,7 +166,6 @@ class GenieReduxGuided(nn.Module):
         mask_schedule="cosine",
         sample_temperature=1.0,
         return_logits=False,
-        return_tokens=False,
         *args,
         **kwargs,
     ):
@@ -175,7 +198,9 @@ class GenieReduxGuided(nn.Module):
             mask_schedule=mask_schedule,
             sample_temperature=sample_temperature,
             return_logits=return_logits,
+            tokenizer=self.tokenizer,
         )
+
 
         if return_logits:
             logits = output
@@ -189,6 +214,7 @@ class GenieReduxGuided(nn.Module):
         video_token_ids = torch.cat((prime_token_ids, video_token_ids), dim=-1)
 
         if return_token_ids:
+
             if return_confidence:
                 return video_token_ids, confidence
             else:
@@ -197,9 +223,6 @@ class GenieReduxGuided(nn.Module):
         video = self.decode_from_codebook_indices(video_token_ids)
 
         video = video[:, :, prime_num_frames:]
-
-        if return_tokens:
-            return video, video_token_ids
 
         if return_confidence:
             return video, confidence
@@ -212,12 +235,12 @@ class GenieReduxGuided(nn.Module):
         actions=None,
         num_frames=None,
         dream_length=2,
+        window_size=5,
         inference_steps=25,
         mask_schedule="cosine",
         sample_temperature=1.0,
         return_confidence=False,
         return_logits=False,
-        return_tokens=False,
         *args,
         **kwargs,
     ):
@@ -237,9 +260,9 @@ class GenieReduxGuided(nn.Module):
         video_tokens = prime_token_ids
         full_confidence = None
 
-        for i in range(0, num_frames, dream_length):
+        for i in range(0,num_frames,dream_length):
             # Calculate window start and end frames
-            start_frame = 0  # max(0, i + initial_prime_num_frames - window_size)
+            start_frame = 0 # max(0, i + initial_prime_num_frames - window_size)
             end_frame = i + initial_prime_num_frames
 
             # Extract tokens for the current window
@@ -266,12 +289,13 @@ class GenieReduxGuided(nn.Module):
                 actions=window_actions,
                 prompt_tokens=None,
                 num_tokens=num_tokens,
-                patch_shape=patch_shape,
+                patch_shape=patch_shape,        
                 inference_steps=inference_steps,
                 mask_schedule=mask_schedule,
                 sample_temperature=sample_temperature,
                 return_confidence=return_confidence,
                 return_logits=return_logits,
+                tokenizer=self.tokenizer,
             )
 
             if return_logits:
@@ -280,43 +304,21 @@ class GenieReduxGuided(nn.Module):
                     full_logits = logits
                 else:
                     for ind, item in enumerate(logits):
-                        item = rearrange(
-                            item,
-                            "b (t h w) -> b t h w",
-                            h=patch_shape[1],
-                            w=patch_shape[2],
-                        )
-                        full_item = rearrange(
-                            full_logits[ind],
-                            "b (t h w) -> b t h w",
-                            h=patch_shape[1],
-                            w=patch_shape[2],
-                        )
+                        item = rearrange(item, "b (t h w) -> b t h w", h=patch_shape[1], w=patch_shape[2])
+                        full_item = rearrange(full_logits[ind], "b (t h w) -> b t h w", h=patch_shape[1], w=patch_shape[2])
                         full_item = torch.cat([full_item, item], dim=1)
                         full_logits[ind] = rearrange(full_item, "b t h w -> b (t h w)")
-            elif return_confidence:
+            elif return_confidence:             
                 new_tokens, confidence = output
                 # full_confidence.append(confidence)
                 if full_confidence is None:
                     full_confidence = confidence
                 else:
                     for ind, item in enumerate(confidence):
-                        item = rearrange(
-                            item,
-                            "b (t h w) -> b t h w",
-                            h=patch_shape[1],
-                            w=patch_shape[2],
-                        )
-                        full_item = rearrange(
-                            full_confidence[ind],
-                            "b (t h w) -> b t h w",
-                            h=patch_shape[1],
-                            w=patch_shape[2],
-                        )
+                        item = rearrange(item, "b (t h w) -> b t h w", h=patch_shape[1], w=patch_shape[2])
+                        full_item = rearrange(full_confidence[ind], "b (t h w) -> b t h w", h=patch_shape[1], w=patch_shape[2])
                         full_item = torch.cat([full_item, item], dim=1)
-                        full_confidence[ind] = rearrange(
-                            full_item, "b t h w -> b (t h w)"
-                        )
+                        full_confidence[ind] = rearrange(full_item, "b t h w -> b (t h w)")
             else:
                 new_tokens = output
 
@@ -333,21 +335,59 @@ class GenieReduxGuided(nn.Module):
 
         # Decode all generated frames at once at the end
         video = self.decode_from_codebook_indices(
-            video_tokens  # [:, initial_prime_num_frames:]
+            video_tokens #[:, initial_prime_num_frames:]
         )
 
         video = video[:, :, initial_prime_num_frames:]
-
-        if return_tokens:
-            return video, video_tokens[:, initial_prime_num_frames:]
 
         if return_logits:
             return video, full_logits
 
         if return_confidence:
             return video, full_confidence
-
+        
         return video
+    
+    def decoder_loss(self, logits, videos):
+        # compute the logit softmax
+        logit_softmax = F.softmax(logits, dim=-1)
+        
+        # not perform inner product between the logit softmax and code in codebooks from the tokenizer
+        # to get a convex combination of the codebooks
+        # debug("logit_softmax", logit_softmax)
+        # debug("codebook", self.tokenizer.vq.codebook)
+        # tokens_cvx_comb = torch.einsum("b m n, n d -> b d", logit_softmax, self.tokenizer.vq.codebook)
+        codebook_batch = repeat(self.tokenizer.vq.codebook, "n d -> b n d", b=logit_softmax.shape[0]).detach()
+        tokens_cvx_comb = torch.einsum("b m n, b n d -> b m d", logit_softmax, codebook_batch)
+        
+        # Compute squared Euclidean distances between tokens_cvx_comb and codebook vectors
+        # tokens_cvx_comb: [b, m, d]
+        # codebook: [n, d]
+        distances = ((tokens_cvx_comb.unsqueeze(2) - self.tokenizer.vq.codebook) ** 2).sum(-1)  # [b, m, n]
+        
+        # Find indices of the closest codebook vectors (hard assignments)
+        closest_indices = distances.argmin(dim=2)  # [b, m]
+        
+        # get the closest codebook vectors
+        closest_codebook = self.tokenizer.vq.codebook[closest_indices]
+        
+        # apply STE to the closest codebook vectors
+        tokens_cvx_comb = tokens_cvx_comb + (closest_codebook - tokens_cvx_comb).detach()
+        
+        # project out the convex combination
+        tokens_cvx_comb = self.tokenizer.vq.project_out(tokens_cvx_comb)
+        
+        # debug("tokens_cvx_comb", tokens_cvx_comb)
+        
+        recons = self.tokenizer.decode(tokens_cvx_comb)
+        
+        # debug("recons", recons)
+        # debug("videos", videos)
+        
+        # compute reconstruction loss
+        recons_loss = F.mse_loss(recons, videos)
+        
+        return recons_loss
 
     def forward(
         self,
@@ -356,6 +396,8 @@ class GenieReduxGuided(nn.Module):
         video_mask=None,
         accelerator_tracker_dict=None,
         return_token_ids=False,
+        return_logits=False,
+        use_decoder_loss=False,
         *args,
         **kwargs,
     ):
@@ -367,13 +409,38 @@ class GenieReduxGuided(nn.Module):
 
         video_codebook_ids = video_codebook_ids.detach()
 
-        return self.dynamics(
+        if self.use_action_embeddings:
+            #turn actions from one hot encoding on the last dim to indices
+            actions = torch.argmax(actions, dim=-1)
+            actions = self.action_embeddings(actions)
+
+        dynamics_output = self.dynamics(
             video_codebook_ids=video_codebook_ids,
             actions=actions,
             video_mask=video_mask,
             accelerator_tracker_dict=accelerator_tracker_dict,
             return_token_ids=return_token_ids,
+            return_logits=use_decoder_loss or return_logits,
+            tokenizer=self.tokenizer,
         )
+        
+        if return_logits:
+            return dynamics_output
+        
+        if not use_decoder_loss:
+            loss = dynamics_output
+            self.accelator_log(accelerator_tracker_dict, loss)
+            return loss
+        
+        ce_loss, logits = dynamics_output
+        
+        decoder_loss = self.decoder_loss(logits, videos[:, :, 1:])
+        
+        self.accelator_log(accelerator_tracker_dict, ce_loss, decoder_loss)
+        
+        loss = ce_loss + decoder_loss
+        
+        return loss
 
 
 class GenieRedux(GenieReduxGuided):
@@ -397,55 +464,66 @@ class GenieRedux(GenieReduxGuided):
             del self.config["latent_action_model"]
 
     def trainable_parameters(self):
-        trainable_parameters = list(self.dynamics.parameters())
+        trainable_parameters = super().trainable_parameters()
         trainable_parameters += list(self.latent_action_model.parameters())
         return trainable_parameters
-
+    
     def state_dict(self, *args, **kwargs):
         state_dict = {}
         state_dict["dynamics"] = self.dynamics.state_dict()
         state_dict["latent_action_model"] = self.latent_action_model.state_dict()
         return state_dict
-
+    
     def load_state_dict(self, state_dict, *args, **kwargs):
         self.dynamics.load_state_dict(state_dict["dynamics"], *args, **kwargs)
-        self.latent_action_model.load_state_dict(
-            state_dict["latent_action_model"], *args, **kwargs
-        )
+        self.latent_action_model.load_state_dict(state_dict["latent_action_model"], strict=False, *args, **kwargs)
 
     def get_codes_from_indices(self, indices):
         h, w = self.patch_height_width
         actions = self.latent_action_model.get_codes_from_indices(indices)
         actions = repeat(actions, "b t d -> b t h w d", h=h, w=w)
         return actions
+    
+    
 
     def forward(
         self,
         videos,
         video_mask=None,
         accelerator_tracker_dict=None,
+        return_token_ids=False,
+        use_decoder_loss=False,
         *args,
         **kwargs,
     ):
 
         with torch.no_grad():
             video_codebook_ids = self.tokenizer(videos, return_only_codebook_ids=True)
-        lam_loss, latent_actions = self.latent_action_model(
-            videos,
-            return_tokens=True,
-            accelerator_tracker_dict=accelerator_tracker_dict,
-        )
+        latent_actions = self.latent_action_model(videos, return_tokens_only=True)
 
         video_codebook_ids = video_codebook_ids.detach()
 
-        dyn_loss = self.dynamics(
+        dynamics_output = self.dynamics(
             video_codebook_ids,
             latent_actions,
             video_mask=video_mask,
             accelerator_tracker_dict=accelerator_tracker_dict,
-            return_token_ids=False,
+            return_token_ids=return_token_ids,
+            return_logits=use_decoder_loss
         )
-
-        loss = lam_loss + dyn_loss
-
+        
+        if not use_decoder_loss:
+            loss = dynamics_output
+            self.accelator_log(accelerator_tracker_dict, loss)
+            return loss
+        
+        ce_loss, logits = dynamics_output
+        
+        decoder_loss = self.decoder_loss(logits, videos)
+        
+        self.accelator_log(accelerator_tracker_dict, ce_loss, decoder_loss)
+        
+        loss = ce_loss + decoder_loss
+        
         return loss
+        

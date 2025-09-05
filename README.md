@@ -53,13 +53,12 @@ We present a framework for training multi-environment world models spanning hund
 * <b> GenieRedux-G </b> - a multi-environment transformer world model, adapted for virtual environments and an enhanced version of GenieRedux - our open version of the Genie world model (Bruce et. al.).
 * <b> AutoExplore Agent</b> - an exploration agent that explores environments entirely based on the dynamics prediction uncertainty of GenieRedux, escaping the need for an environment-specific reward and providing diverse training data for our world model.
 
-<!-- Our original GenieRedux and GenieRedux-G implementations on the CoinRun test case study, as provided in our [NeurIPS'24 D3S3 paper](https://nsavov.github.io/GenieRedux/) - , are provided on the [neurips](https://github.com/insait-institute/GenieRedux/tree/neurips) branch. -->
-
 In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
 
 
-🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! In the mean time, you will find GenieRedux and GenieRedux-G, with training code on the CoinRun test case (as described [here](https://nsavov.github.io/GenieRedux/)), including pretrained model weights.
+🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! We have released our data generation, RetroAct dataset, latest GenieRedux-G code, and instructions for pretraining on many environments. We are preparing AutoExplore Agent's code, its corresponding data generation and finetuning code.
 
+> ⚠️ For a minimal case study with the Coinrun environment (as described [here](https://nsavov.github.io/GenieRedux/)), where both GenieRedux and GenieRedux-G are demonstrated, with pretrained weights and with an option for a trained agent, please refer to the [neurips branch](https://github.com/insait-institute/GenieRedux/tree/neurips).
 ![CoinRun](docs/title.gif)
 
 ## Installation
@@ -79,7 +78,7 @@ In our latest work, we demonstrate our method on many platformer environments, o
     conda activate retro_datagen
    ```
 
-   Import the game ROMs following the [Stable Retro instructions](https://github.com/Farama-Foundation/stable-retro?tab=readme-ov-file#documentation)
+   You will need to import the game ROMs. To do so, please follow instructions at the [Stable-Retro Docs](https://stable-retro.farama.org/getting_started/#importing-roms).
 
 3. <b>GenieRedux Environment  Installation.</b>
   Set up the Python environment:
@@ -89,7 +88,7 @@ In our latest work, we demonstrate our method on many platformer environments, o
    ``` 
    This script will create a conda environment named `genie_redux`.
 
-   Note: This implementation is tested on Linux-64 with Python 3.10 and Conda package manager.
+   Note: This implementation is tested on Linux-64 with Python 3.13 and Conda package manager.
 
 ## Quickstart
 
@@ -104,7 +103,7 @@ conda activate retro_datagen
 To generate all datasets (saved in `data_generation/datasets/`), run:
 
 ```bash
-python generate.py
+python generate.py --config configs/data_gen_retro.json
 python generate.py --config configs/data_gen_retro_control.json
 python generate.py --config configs/data_gen_retro_control_test_set.json
 ```
@@ -122,23 +121,31 @@ To train the tokenizer for on the generated dataset (for 150k iterations), run:
 bash run.sh --config=tokenizer.yaml --num_processes=6 --train.batch_size=7 --train.grad_accum=2
 ```
 
-#### GenieRedux (Dynamics+LAM)
-Using the tokenizer that we just train, we can now train GenieRedux:
+#### GenieRedux-G (Dynamics Only) Pretraining
+In our paper, we pretrain a model, conditioned on ground truth actions, on 200 platformers:
 ```bash
-bash run.sh --config=genie_redux.yaml --num_processes=7 --train.batch_size=3 --train.grad_accum=4
+bash run.sh --config=genie_redux_guided_pretrain.yaml --num_processes=7 --train.batch_size=4 --train.grad_accum=3
 ```
 
-#### GenieRedux-G (Dynamics Only)
-Alternatively, to use the ground truth actions instead of LAM:
+If you have more resources, we advise pretraining on all platformers by adding the parameter `--train.n_envs=0`. To account for more environments, also set a higher value for `--train.num_train_steps`.
+
+#### GenieRedux-G-50
+Finetuning on 50 control-aligned environments:
 ```bash
-bash run.sh --config=genie_redux_guided.yaml --num_processes=7 --train.batch_size=4 --train.grad_accum=3
+bash run.sh --config=genie_redux_guided_50.yaml --num_processes=7 --train.batch_size=4 --train.grad_accum=3
+```
+
+#### (Optional) GenieRedux (Dynamics+LAM)
+Having the trained tokanizer, we can now train GenieRedux:
+```bash
+bash run.sh --config=genie_redux.yaml --num_processes=7 --train.batch_size=3 --train.grad_accum=4
 ```
 
 ### Evaluation of GenieRedux
 
 To get quantitative evaluation (ΔPSNR, FID, PSNR, SSIM):
 ```bash
-bash run.sh --config=genie_redux.yaml --mode=eval --eval.action_to_take=-1 --eval.model_fpath=<path_to_model> --eval.inference_method=one_go
+bash run.sh --config=genie_redux_guided_50.yaml --mode=eval --eval.action_to_take=-1 --eval.model_fpath=checkpoints/genie_redux_guided/genie_redux_guided/model-100000.pt --eval.inference_method=one_go
 ```
 
 ## Data Generation
@@ -146,7 +153,7 @@ bash run.sh --config=genie_redux.yaml --mode=eval --eval.action_to_take=-1 --eva
 Initial setup:
 ```bash
 cd data_generation
-conda activate coinrun
+conda activate retro_datagen
 ```
 
 Data generation is ran in the following format:
@@ -154,23 +161,6 @@ Data generation is ran in the following format:
 python generate --config configs/<CONFIG_NAME>.json
 ```
 
-### Data Generation With A Trained Agent
-
-In Quickstart, we saw how to generate data with a random agent. Here we discuss using a PPO agent.
-
-For training a PPO agent, follow the instructions in the [Coinrun repository](https://github.com/openai/coinrun).
-It is expected that the pretrained model weights are at `data_generation/external/coinrun/coinrun/saved_models/sav_myrun_0`.
-
-Run generation with:
-```bash
-python generate.py --config configs/data_gen_ppo.json
-```
-
-For a test set:
-
-```bash
-python generate.py --config /external/data_gen_ppo_test_set.json
-```
 ### Data Generation Parameters
 
 Additional customization is available in the configuration files in `data_generation/configs/`. Note the following important properties:
@@ -242,6 +232,7 @@ We note two important parameters:
 - `model`: This is the model you want to train. The training and evaluation scripts use this argument to determine which model to instantiate. The available options are:
   - `tokenizer`
   - `genie_redux`
+  - `genie_redux_guided_pretrain`
   - `genie_redux_guided`
 
 - `mode`: This determines if we want to train or evaluate a model:
@@ -251,9 +242,11 @@ We note two important parameters:
 
 ## Evaluation
 
-With a single script, we provide qualitative and quantitative evaluation. We support two types of evaluation, specified by `eval.action_to_take` argument.
+With a single script, we provide qualitative and quantitative evaluation. The type of evaluation is specified by `eval.action_to_take` argument.
 
 `model_path` parameter should be set to the path of the model you want to evaluate.
+
+If you often evaluate on the same test set, runs can be faster by caching the processed dataset metadata - you can use `--eval.enable_cache=true` to enable this behavior.
 
 ### Replication Evaluation
 
@@ -263,9 +256,9 @@ To enable this evaluation, set `eval.action_to_take=-1`.
 
 ### Control Evaluation
 
-This evaluation is meant for qualitative results only. An action of choice, designated by an index (0 to 7 in the case of Coinrun), is given and it is executed by the model for the full sequence, given an input image.
+This evaluation is meant for qualitative results only. An action of choice, designated by an index (0 to 4 in the case of RetroAct), is given and it is executed by the model for the full sequence, given an input image.
 
-To enable this evaluaiton, set `eval.action_to_take=<ACTION_ID>`, where `<ACTION_ID>` is the aciton index.
+To enable this evaluaiton, set `eval.action_to_take=<ACTION_ID>`, where `<ACTION_ID>` is the aciton index. You can check the indexing in the data generation json file, defined by `valid_action_combos` parameter.
 
 
 ### Evaluation Modes
@@ -279,10 +272,10 @@ There are two evaluation modes:
 ### Example
 
 ```bash
-./run.sh --config=genie_redux.yaml --mode=eval --eval.action_to_take=1 --eval.model_path=<path_to_model> --eval.inference_method=one_go
+./run.sh --config=genie_redux_guided.yaml --mode=eval --eval.action_to_take=0 --eval.model_path=<path_to_model> --eval.inference_method=one_go
 ```
 
-The above command will evaluate the model at the specified path using the action at index `1`, which corresponds to the `RIGHT` action in the `CoinRun` dataset. You can see the visualizations of the model's predictions in the `./outputs/evaluation/<model-name>/<dataset>/`, dirctory, which is default path for the evaluation results.
+The above command will evaluate the model at the specified path using the action at index `0`, which corresponds to the `RIGHT` action in the `RetroAct` dataset. You can see the visualizations of the model's predictions in the `./outputs/evaluation/<model-name>/<dataset>/`, dirctory, which is default path for the evaluation results.
 
 ## Project Structure
 
@@ -291,7 +284,7 @@ The above command will evaluate the model at the specified path using the action
 - **`configs`** - a directory, containing the configuration files for data generation
 - **`data/data.py`** - contains definition of the file structure of a generated dataset. This definition is also used by the data handler while training to read the datasets.
 - **`generator/generator.py`** - An implementation of a dataset generator - it requests data from a connector that connects it with an environment and saves the data according to a dataset file structure.
-- **`generator/connector_coinrun.py`** - A class to connect the generator with the Coinrun environment in order to obtain data.
+- **`generator/connector_retro_act.py`** - A class to connect the generator with the stable-retro environment in order to obtain data.
 - **`generate.py`** - a running script for the data generation
 
 ### Data Directory

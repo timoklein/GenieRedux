@@ -4,15 +4,25 @@ defaults:
   - /dynamics/dynamics
   - _self_
 
-model: genie_redux_guided
+model: genie_redux_guided_pretrain
 mode: train
+
+dynamics:
+  use_token: true
+  is_guided: true
 
 train:
   dataset_root_dpath: "data_generation/datasets"
-  dataset_name: "coinrun_v2.0.0"
-  wandb_name: "genie_redux_guided"
+  dataset_name: "retro_act_v0.0.0"
+  wandb_name: "genie_redux_guided_pretrain"
+  num_train_steps: 180000
   batch_size: 4
   grad_accum: 3
+  n_data_workers: 46
+  n_total_samples: 50
+  n_envs: 200
+  max_valid_size: 50
+  use_decoder_loss: false
 
 tokenizer_fpath: ${config.train.save_root_dpath}/tokenizer/tokenizer/model-150000.pt
 

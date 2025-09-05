@@ -8,12 +8,12 @@ mode: train
 
 train:
   dataset_root_dpath: "data_generation/datasets"
-  dataset_name: "retro_gym_v0.0.0"
+  dataset_name: "retro_act_v0.0.0"
   wandb_name: "tokenizer"
   batch_size: 7
   batch_size_val: 20
   grad_accum: 4
   n_data_workers: 46
   n_total_samples: 50
-  n_envs: 10
+  n_envs: 0
   max_valid_size: 50

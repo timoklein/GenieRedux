@@ -48,6 +48,16 @@ def run(args):
     n_total_samples = args.train.n_total_samples
     n_envs = args.train.n_envs
 
+    # If a warm-start model path is provided, ensure it exists and load it
+    if hasattr(args, "model_fpath") and args.model_fpath:
+        if not os.path.exists(args.model_fpath):
+            raise FileNotFoundError(
+                f"Training warm-start checkpoint not found at '{args.model_fpath}'."
+            )
+        model_state_dict = torch.load(args.model_fpath, map_location="cpu")
+        model.load_state_dict(model_state_dict["model"])  # strict loading
+        del model_state_dict
+
     kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(
         cpu=False,
@@ -118,15 +128,15 @@ def run(args):
         wandb_mode=args.train.wandb_mode,
         wandb_project=args.train.wandb_project,
         wandb_name=args.train.wandb_name,
-        grad_accum_every=args.train.grad_accum,  # use this as a multiplier of the batch size
+        grad_accum_every=args.train.grad_accum,
         num_train_steps=args.train.num_train_steps,
-        lr=args.optimizer.learning_rate,  # Learning rate
-        wd=args.optimizer.weight_decay,  # Weight decay
+        lr=args.optimizer.learning_rate,
+        wd=args.optimizer.weight_decay,
         linear_warmup_start_factor=args.optimizer.linear_warmup_start_factor,
         linear_warmup_total_iters=args.optimizer.linear_warmup_total_iters,
         cosine_annealing_T_max=args.optimizer.cosine_annealing_t_max,
         cosine_annealing_eta_min=args.optimizer.cosine_annealing_min_lr,
-        max_grad_norm=args.optimizer.max_grad_norm,  # gradient clipping
+        max_grad_norm=args.optimizer.max_grad_norm,
         save_dpath=save_dpath,
         save_model_every=args.train.save_model_every,
         wandb_dpath=args.train.wandb_dpath,

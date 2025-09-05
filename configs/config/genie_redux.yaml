@@ -10,10 +10,15 @@ mode: train
 
 train:
   dataset_root_dpath: "data_generation/datasets"
-  dataset_name: "coinrun_v2.0.0"
+  dataset_name: "retro_gym_v0.0.0"
   wandb_name: "genie_redux"
   batch_size: 3
   grad_accum: 4
+  n_data_workers: 46
+  n_total_samples: 50
+  n_envs: 0
+  max_valid_size: 50
+  use_decoder_loss: false
 
 dynamics:
   max_seq_len: 8000

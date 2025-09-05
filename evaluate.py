@@ -9,11 +9,12 @@ from training.evaluation import Evaluator
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 from einops import rearrange
+import os
 import torch
 from data.data import (
     DatasetOutputFormat,
     TransformsGenerator,
-    EnvironmentDataset,
+    MultiEnvironmentDataset,
     video_tensor_to_gif,
     video_tensor_to_pil_images,
 )
@@ -171,8 +172,6 @@ def evaluate(
 
             log.i(f"Current scores: {psnr} PSNR; {ssim} SSIM, {delta_psnr} Delta PSNR")
 
-            # continue
-
             if i < 10 and is_main_process:
                 sampled_videos_path = Path(args.eval.save_root_dpath) / f"{args.eval.dataset_name}/{args.eval.model_name}/samples_{i}"
                 (sampled_videos_path).mkdir(parents=True, exist_ok=True)
@@ -224,7 +223,7 @@ def evaluate(
 
 @torch.no_grad()
 def run(args):
-    dataset_folder = f"{args.eval.dataset_root_dpath}/{args.eval.dataset_name}/{args.eval.dataset_name}"
+    dataset_folder = f"{args.eval.dataset_root_dpath}/{args.eval.dataset_name}"
 
     kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(kwargs_handlers=[kwargs])
@@ -234,12 +233,16 @@ def run(args):
 
     model = construct_model(args)
 
+    if not args.eval.model_fpath or not os.path.exists(args.eval.model_fpath):
+        raise FileNotFoundError(
+            f"Evaluation model checkpoint not found at '{args.eval.model_fpath}'."
+        )
     model_state_dict = torch.load(args.eval.model_fpath, map_location="cpu")
     model.load_state_dict(model_state_dict["model"])
     del model_state_dict
 
     transforms = TransformsGenerator.get_final_transforms(model.image_size, None)
-    test_data_set = EnvironmentDataset(
+    test_data_set = MultiEnvironmentDataset(
         dataset_folder,
         seq_length_input=args.eval.num_frames - 1,
         seq_step=args.eval.seq_step,
@@ -247,7 +250,9 @@ def run(args):
         split="all",
         transform=transforms["test"],
         format=DatasetOutputFormat.IVG,
-        enable_cache=True,
+        enable_cache=bool(getattr(args.eval, "enable_cache", False)),
+        n_workers=args.eval.n_data_workers,
+        n_envs=args.eval.n_envs,
         cache_dpath=f"cache/evaluation/{args.eval.dataset_name}",
     )
 

@@ -164,6 +164,7 @@ class Trainer(nn.Module):
         self.wandb_log_every = wandb_log_every
         self.num_frames = num_frames
         self.sample_num_frames = sample_num_frames
+        self.use_decoder_loss = getattr(train_config.train, "use_decoder_loss", False)
 
         # Create config dictionary for logging
         config = {}
@@ -176,7 +177,7 @@ class Trainer(nn.Module):
         config["model_config"] = model.config
 
         # Determine the type of model
-        self.is_genie = isinstance(model, GenieRedux | GenieReduxGuided)
+        self.is_genie = isinstance(model, (GenieRedux, GenieReduxGuided))
         self.is_lam = isinstance(model, LatentActionModel)
 
         if accelerator is not None:
@@ -459,6 +460,7 @@ class Trainer(nn.Module):
                         actions=actions,
                         apply_grad_penalty=apply_grad_penalty,
                         accelerator_tracker_dict=accelerator_tracker_dict,
+                        use_decoder_loss=self.use_decoder_loss,
                     )
 
                 # Backward pass
@@ -507,6 +509,7 @@ class Trainer(nn.Module):
                         actions=actions,
                         step=step,
                         accelerator_tracker_dict=accelerator_tracker_dict,
+                        use_decoder_loss=self.use_decoder_loss,
                     )
 
                     if self.is_genie:

@@ -33,7 +33,7 @@
         "action_map": "default",
         "generator_config": {
             "n_instances": 1,
-            "n_sessions": 20,
+            "n_sessions": 100,
             "n_steps_max": 500,
             "n_workers": 10,
             "output_mode": "frame"
