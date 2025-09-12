@@ -142,14 +142,14 @@ Having the trained tokanizer, we can now train GenieRedux:
 python run.py genie_redux train config=genie_redux train.num_processes=7 train.batch_size=3 train.grad_accum=4 tokenizer_fpath=checkpoints/tokenizer/tokenizer/model-150000.pt
 ```
 
-### Evaluation of GenieRedux
+### Evaluating GenieRedux
 
 To get quantitative evaluation (ΔPSNR, FID, PSNR, SSIM):
 ```bash
 python run.py genie_redux eval config=genie_redux_guided_50 eval.action_to_take=-1 eval.model_fpath=checkpoints/genie_redux_guided/genie_redux_guided/model-100000.pt eval.inference_method=one_go 
 ```
 
-### Training of AutoExplore Agent
+### Training AutoExplore Agent
 
 ```bash
 conda activate auto_explore
