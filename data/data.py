@@ -338,7 +338,6 @@ class MultiEnvironmentDataset(Dataset):
             if n_actions > 0:
                 dataset.n_actions = n_actions
 
-            # self.log.t(f"Dataset size {id}: {len(dataset)}")
             return dataset
 
         with ThreadPool(n_workers) as pool:
@@ -1193,7 +1192,6 @@ class TransformsGenerator:
         components.append(resize_transform)
 
         if "color_jitter" in kwargs:
-            log.t("Adding color jitter")
             color_jitter_transform = transforms.Lambda(
                 lambda x: TransformsGenerator.color_jitter_transform(
                     x,
@@ -1299,12 +1297,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     tester = EnvironmentDatasetTester(
         EnvironmentDataset(
-            "../../datasets/retro_gym_v1.1.1/retro_montezumarevenge-atari2600_v1.1.1__frameskip4/",
+            "../../datasets/retro_act_v1.1.1/retro_montezumarevenge-atari2600_v1.1.1__frameskip4/",
             seq_length_input=15,
             split="test",
             split_type="instance",
         ),
-        Path("output/retro_gym_v1.0.1"),
+        Path("output/retro_act_v1.0.1"),
     )
     for idx, i in enumerate(tester):
         pass

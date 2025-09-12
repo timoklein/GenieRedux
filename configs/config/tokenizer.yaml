@@ -1,10 +1,11 @@
+# @package _global_
+
 defaults:
   - default
   - /tokenizer/tokenizer.yaml
   - _self_
 
 model: tokenizer
-mode: train
 
 train:
   dataset_root_dpath: "data_generation/datasets"

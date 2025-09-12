@@ -18,6 +18,7 @@ from data.data import (
 from models import construct_model
 from training import Trainer
 from utils.utils import debug
+from omegaconf import OmegaConf
 
 
 def count_parameters(model):
@@ -118,6 +119,42 @@ def run(args):
 
     save_dpath = f"{args.train.save_root_dpath}/{args.model}/{args.train.wandb_name}"
 
+    # Ensure checkpoint directory exists
+    os.makedirs(save_dpath, exist_ok=True)
+
+    # Export full resolved Hydra config to YAML in the checkpoint directory
+    try:
+        OmegaConf.save(args, os.path.join(save_dpath, "config.yaml"), resolve=True)
+    except Exception as e:
+        print(f"Warning: failed to save config.yaml to '{save_dpath}': {e}")
+
+    # For GenieRedux training (not tokenizer), create a symlink to the tokenizer weights
+    if getattr(args, "model", None) != "tokenizer":
+        link_path = os.path.join(save_dpath, "tokenizer.pt")
+        try:
+            # Remove existing link/file if present
+            if os.path.islink(link_path) or os.path.exists(link_path):
+                os.remove(link_path)
+
+            # Prefer copying the tokenizer symlink from a warm-start checkpoint directory
+            if hasattr(args, "model_fpath") and args.model_fpath:
+                src_link = os.path.join(os.path.dirname(args.model_fpath), "tokenizer.pt")
+                if not os.path.exists(src_link):
+                    raise FileNotFoundError(
+                        f"Tokenizer symlink not found next to warm-start checkpoint: '{src_link}'"
+                    )
+                # Create a symlink to the existing symlink (copy the symlink itself)
+                os.symlink(src_link, link_path)
+            else:
+                # Fall back to an explicit tokenizer_fpath if provided
+                tok_fpath = getattr(args, "tokenizer_fpath", None)
+                if tok_fpath and os.path.exists(tok_fpath):
+                    os.symlink(os.path.abspath(tok_fpath), link_path)
+        except Exception as e:
+            print(
+                f"Warning: failed to create tokenizer symlink at '{link_path}': {e}"
+            )
+
     trainer = Trainer(
         model=model,
         batch_size=args.train.batch_size,
@@ -160,3 +197,14 @@ def run(args):
 
     model.train()
     trainer.train()
+import hydra
+from omegaconf import DictConfig
+
+
+@hydra.main(version_base=None, config_path="configs", config_name="default")
+def main(cfg: DictConfig):
+    run(cfg)
+
+
+if __name__ == "__main__":
+    main()

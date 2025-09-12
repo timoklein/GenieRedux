@@ -44,4 +44,3 @@ dependencies:
       - tqdm==4.67.1
       - typing-extensions==4.14.0
       - tzdata==2025.2
-prefix: /scratch/nedko_savov/tools/miniconda3/envs/retro_datagen

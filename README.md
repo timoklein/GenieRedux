@@ -56,7 +56,7 @@ We present a framework for training multi-environment world models spanning hund
 In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
 
 
-🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! We have released our data generation, RetroAct dataset, latest GenieRedux-G code, and instructions for pretraining on many environments. We are preparing AutoExplore Agent's code, its corresponding data generation and finetuning code.
+🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! We have released our data generation, RetroAct dataset, latest GenieRedux-G code, AutoExplore Agent code, and training/evaluation instructions on many environments. We are preparing AutoExplore data generation and finetuning code.
 
 > ⚠️ For a minimal case study with the Coinrun environment (as described [here](https://nsavov.github.io/GenieRedux/)), where both GenieRedux and GenieRedux-G are demonstrated, with pretrained weights and with an option for a trained agent, please refer to the [neurips branch](https://github.com/insait-institute/GenieRedux/tree/neurips).
 ![CoinRun](docs/title.gif)
@@ -118,35 +118,73 @@ conda activate genie_redux
 #### Tokenizer
 To train the tokenizer for on the generated dataset (for 150k iterations), run:
 ```bash
-bash run.sh --config=tokenizer.yaml --num_processes=6 --train.batch_size=7 --train.grad_accum=2
+python run.py genie_redux train config=tokenizer.yaml train.num_processes=6 train.batch_size=7 train.grad_accum=2
 ```
 
 #### GenieRedux-G (Dynamics Only) Pretraining
 In our paper, we pretrain a model, conditioned on ground truth actions, on 200 platformers:
 ```bash
-bash run.sh --config=genie_redux_guided_pretrain.yaml --num_processes=7 --train.batch_size=4 --train.grad_accum=3
+python run.py genie_redux train config=genie_redux_guided_pretrain.yaml train.num_processes=7 train.batch_size=4 train.grad_accum=3
+tokenizer_fpath=checkpoints/tokenizer/tokenizer/model-150000.pt
 ```
 
-If you have more resources, we advise pretraining on all platformers by adding the parameter `--train.n_envs=0`. To account for more environments, also set a higher value for `--train.num_train_steps`.
+If you have more resources, we advise pretraining on all platformers by adding the parameter `train.n_envs=0`. To account for more environments, also set a higher value for `train.num_train_steps`.
 
 #### GenieRedux-G-50
 Finetuning on 50 control-aligned environments:
 ```bash
-bash run.sh --config=genie_redux_guided_50.yaml --num_processes=7 --train.batch_size=4 --train.grad_accum=3
+python run.py genie_redux train config=genie_redux_guided_50 train.num_processes=7 train.batch_size=4 train.grad_accum=3 model_fpath=checkpoints/genie_redux_guided/genie_redux_guided_pretrain/model-180000.pt
 ```
 
 #### (Optional) GenieRedux (Dynamics+LAM)
 Having the trained tokanizer, we can now train GenieRedux:
 ```bash
-bash run.sh --config=genie_redux.yaml --num_processes=7 --train.batch_size=3 --train.grad_accum=4
+python run.py genie_redux train config=genie_redux train.num_processes=7 train.batch_size=3 train.grad_accum=4 tokenizer_fpath=checkpoints/tokenizer/tokenizer/model-150000.pt
 ```
 
 ### Evaluation of GenieRedux
 
 To get quantitative evaluation (ΔPSNR, FID, PSNR, SSIM):
 ```bash
-bash run.sh --config=genie_redux_guided_50.yaml --mode=eval --eval.action_to_take=-1 --eval.model_fpath=checkpoints/genie_redux_guided/genie_redux_guided/model-100000.pt --eval.inference_method=one_go
+python run.py genie_redux eval config=genie_redux_guided_50 eval.action_to_take=-1 eval.model_fpath=checkpoints/genie_redux_guided/genie_redux_guided/model-100000.pt eval.inference_method=one_go 
 ```
+
+### Training of AutoExplore Agent
+
+```bash
+conda activate auto_explore
+```
+
+Launch AutoExplore training via the unified launcher using the `auto_explore` stack. Lightning Fabric handles device setup internally.
+
+```bash
+python run.py auto_explore train common.root_dpath=checkpoints/auto_explore world_model.root_dpath=checkpoints/genie_redux_guided world_model.model_dname=genie_redux_guided world_model.model_fname=model-100000.pt collection.games='["AdventureIslandII-Nes"]'
+```
+
+Notes:
+- `world_model.*` points the agent to a pretrained Genie/GenieRedux checkpoint (directory name + filename).
+- ``collection.games` selects the game. Example games to try: <i>AdventureIslandII-Nes, SuperMarioBros-Nes, Flintstones-Genesis, TinyToonAdventuresBustersHiddenTreasure-Genesis, BronkieTheBronchiasaurus-Snes, BugsBunnyBirthdayBlowout-Nes</i>
+- Outputs (checkpoints, configs, media) are written under `common.root_dpath/<run_name>`.
+
+
+### Evaluating AutoExplore Agent
+
+```bash
+conda activate auto_explore
+```
+
+Launch evaluation via the unified launcher using the `auto_explore` stack.
+
+```bash
+python run.py auto_explore eval world_model.root_dpath=checkpoints/genie_redux_guided world_model.model_dname=genie_redux_guided world_model.model_fname=model-100000.pt common.root_dpath=checkpoints/auto_explore common.resume_id=1 common.resume_ckpt_id=model_best_reward collection.games='["AdventureIslandII-Nes"]'
+```
+
+Notes:
+
+- `common.resume_id` specifies which training run to evaluate (matches the numbered model directory).
+- `common.resume_ckpt_id` selects the checkpoint file within that run (e.g. `model_best_reward`).
+- `collection.games` selects the game (the same as in training should be used)
+- Evaluation runs a single very long episode per epoch, computes average return, and generates gifs, stored on wandb and in <run_dir>/outputs/gifs/.
 
 ## Data Generation
 
@@ -169,15 +207,36 @@ Additional customization is available in the configuration files in `data_genera
 - `n_steps_max` - maximum number of steps before ending the episode
 - `n_workers` - number of workers to generate episodes in parallel
 
-## Training
+## Entrypoint
+
+All training and evaluation in this repository is launched through a single entrypoint:
+
+```bash
+python run.py <MODEL> <MODE> <parameters...>
+```
+
+- **`<MODEL>`** – Which component to run:
+  - `genie_redux` – for GenieRedux models.
+  - `auto_explore` – for AutoExplore Agent.
+
+- **`<MODE>`** – Operation mode:
+  - `train` – start a training run.
+  - `eval` – run evaluation.
+
+- **`<parameters>`** – Hydra config overrides.
+
+Hydra allows hierarchical configs and command-line overrides. GenieRedux configs live in `configs/` and AutoExplore Agent configs - in `auto_explore/configs/`.
+
+## GenieRedux
 ### Training Configuration
 
 
 This project leverages **Hydra** for flexible configuration management:
 
 - Custom configurations should be added to the `configs/config/` directory.
+- At the beginning of custom configurations there should be `# @package _global_`.
 - Modify `default.yaml` to set new defaults.
-- Create new configuration files, with the predifined confifg `yaml` files as their base.
+- Create new configuration files, with the predifined config `yaml` files as their base.
 
 Control is given over model and training parameters, as well as dataset paths. 
 For example, dataset arguments are provided in the following format:
@@ -196,26 +255,23 @@ tokenizer_fpath: <path_to_tokenizer>
 
 ### Running Training
 
-`run.sh` is a wrapper script that we use for all our training and evaluation tasks. It streamlines specifying configurations and overriding parameters.
-
 ```bash
-bash run.sh --config=<CONFIG_NAME>.yaml
+python run.py genie_redux train config=<CONFIG_NAME>.yaml <PARAMETERS>
 ```
 
 Current available configurations are:   
 
 - `tokenizer.yaml` (Default)
 - `genie_redux.yaml`
-- `genie_redux_guided.yaml`
-
-
+- `genie_redux_guided_pretrain.yaml`
+- `genie_redux_guided_50.yaml`
 
 ### CLI Training Customization
 
 You can override parameters directly from the command line. For example, to specify training steps:
 
 ```bash
-bash run.sh --train.num_train_steps=10000
+python run.py genie_redux train train.num_train_steps=10000
 ```
 
 This overrides the `num_train_steps` parameter defined in `configs/config/default.yaml`.
@@ -223,11 +279,8 @@ This overrides the `num_train_steps` parameter defined in `configs/config/defaul
 Another example, where we train on 2 GPUs with batch size 2, using a specified tokenizer and dataset:
 
 ```bash
-
-./run --num_processes=2 --config=genie_redux.yaml --tokenizer_fpath=<path_to_tokenizer> --train.dataset_root_dpath=<path_to_dataset_root_directory> --train.dataset_name=<dataset_name> --train.batch_size=2
+python run.py genie_redux train config=genie_redux tokenizer_fpath=<path_to_tokenizer> train.dataset_root_dpath=<path_to_dataset_root_directory> train.dataset_name=<dataset_name> train.batch_size=2 train.num_processes=2
 ```
-
-We note two important parameters:
 
 - `model`: This is the model you want to train. The training and evaluation scripts use this argument to determine which model to instantiate. The available options are:
   - `tokenizer`
@@ -235,18 +288,36 @@ We note two important parameters:
   - `genie_redux_guided_pretrain`
   - `genie_redux_guided`
 
-- `mode`: This determines if we want to train or evaluate a model:
-  - `train`
-  - `eval`
+
+## AutoExplore Agent Training
 
 
-## Evaluation
+```bash 
+python run.py auto_explore train <PARAMETERS>
+```
+At each epoch data collection in an experience replay buffer is performed, followed by training the agent and (potentially) performing evaluation. After evaluation, it is checked if the current model is the best so far (according to the return), and if so - saved.
+
+Some important parameters:
+- `common.root_dpath` - main checkpoint directory for AutoExplore models
+- `world_model.*` - GenieRedux model checkpoint selection parameters
+- `common.name` - model name
+- `common.epochs` - number of epochs to train
+- `common.device` - select `gpu` (default) or `cpu`
+- `collection.games` - in the form `'["GAMENAME"]`, it contains the `stable-retro` identifier of a game to use.
+- `collection.train.config.episilon` - defines randomness chance of an action
+- `collection.train.config.n_preds` - defines how many predictions in the future the world model makes for the calculation of the reward
+- `collection.train.config.num_steps` - number of steps
+- `training.actor_critic.start_after` - number of epochs for a warmup (just data collection)
+- `training.actor_critic.steps_per_epoch` - number of training steps before the next collection phase
+- `evaluation.every` - every N epochs - perform an evaluation
+
+## GenieRedux Evaluation
 
 With a single script, we provide qualitative and quantitative evaluation. The type of evaluation is specified by `eval.action_to_take` argument.
 
 `model_path` parameter should be set to the path of the model you want to evaluate.
 
-If you often evaluate on the same test set, runs can be faster by caching the processed dataset metadata - you can use `--eval.enable_cache=true` to enable this behavior.
+If you often evaluate on the same test set, runs can be faster by caching the processed dataset metadata - you can use `eval.enable_cache=true` to enable this behavior.
 
 ### Replication Evaluation
 
@@ -259,8 +330,6 @@ To enable this evaluation, set `eval.action_to_take=-1`.
 This evaluation is meant for qualitative results only. An action of choice, designated by an index (0 to 4 in the case of RetroAct), is given and it is executed by the model for the full sequence, given an input image.
 
 To enable this evaluaiton, set `eval.action_to_take=<ACTION_ID>`, where `<ACTION_ID>` is the aciton index. You can check the indexing in the data generation json file, defined by `valid_action_combos` parameter.
-
-
 ### Evaluation Modes
 
 There are two evaluation modes:
@@ -272,10 +341,18 @@ There are two evaluation modes:
 ### Example
 
 ```bash
-./run.sh --config=genie_redux_guided.yaml --mode=eval --eval.action_to_take=0 --eval.model_path=<path_to_model> --eval.inference_method=one_go
+python run.py genie_redux eval --config=genie_redux_guided.yaml --mode=eval --eval.action_to_take=0 --eval.model_path=<path_to_model> --eval.inference_method=one_go
 ```
 
 The above command will evaluate the model at the specified path using the action at index `0`, which corresponds to the `RIGHT` action in the `RetroAct` dataset. You can see the visualizations of the model's predictions in the `./outputs/evaluation/<model-name>/<dataset>/`, dirctory, which is default path for the evaluation results.
+
+## AutoExplore Agent Evaluation
+
+```bash 
+python run.py auto_explore eval <PARAMETERS>
+```
+
+While the same parameters are available, the values of some of them under `eval` differ from the `train` mode. By default, 20 epochs of evaluation only (on each epoch) is performed - with a single long episode. The evaluation is done during collection phase, the return is reported, and a gif of each episode is generated.   
 
 ## Project Structure
 
@@ -311,9 +388,18 @@ The above command will evaluate the model at the specified path using the action
     - Visualizing the model's predictions with ground truth or custom input actions.
 - **`optimizer.py`**: Custom optimization routines.
 
+### AutoExplore Directory
+
+- `auto_explore/src/trainer.py`: Orchestrates AutoExplore runs using Lightning Fabric.
+- `auto_explore/src/collector.py`: Runs experience collection loops. and computes intrinsic rewards.
+- `auto_explore/src/agent.py`: Thin wrapper tying the world model and `ActorCritic` together.
+- `auto_explore/src/models/actor_critic.py`: The policy/value network used by the agent.
+- `auto_explore/src/dataset.py`: In-memory `EpisodesDataset`.
+- `auto_explore/configs/`: Configurations directory.
+
 ## Citations
 
-We thank the authors of the [Phenaki CViViT implementation](https://github.com/obvious-research/phenaki-cvivit), which served as great initial reference point for our project.
+We thank the authors of the [Phenaki CViViT implementation](https://github.com/obvious-research/phenaki-cvivit) and [iris world model](https://github.com/eloialonso/iris) for their codebases, which formed the initial reference point of our code.
 
 If you find our work useful, please cite our paper, as well as the original Genie world model (Bruce et. al. 2024).
 

@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+import hydra
+from omegaconf import DictConfig
 
 from tqdm import tqdm
 
@@ -205,7 +207,7 @@ def evaluate(
                     combined_image.save(sampled_videos_path / f"{j}.png")
 
             if is_main_process:
-                print(f"Batch {i} Evaluation done!")
+                log.i(f"Batch {i} Evaluation done!")
 
     psnr_score = torch.mean(torch.tensor(psnr_scores, device=device))
     ssim_score = torch.mean(torch.tensor(ssim_scores, device=device))
@@ -226,7 +228,7 @@ def run(args):
     dataset_folder = f"{args.eval.dataset_root_dpath}/{args.eval.dataset_name}"
 
     kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
-    accelerator = Accelerator(kwargs_handlers=[kwargs])
+    accelerator = Accelerator(mixed_precision="bf16", kwargs_handlers=[kwargs])
 
     device = accelerator.device
     evaluator = Evaluator(device)
@@ -268,3 +270,12 @@ def run(args):
     evaluate(
         model, evaluator, test_loader, device, args, is_main_process, is_distributed
     )
+
+
+@hydra.main(version_base=None, config_path="configs", config_name="default")
+def main(cfg: DictConfig):
+    run(cfg)
+
+
+if __name__ == "__main__":
+    main()

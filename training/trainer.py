@@ -448,6 +448,7 @@ class Trainer(nn.Module):
                     "tracker": self.accelerator,
                     "step": step,
                     "train": True,
+                    "log_every": self.wandb_log_every,
                 }
 
             # Compute loss with automatic mixed precision
@@ -496,6 +497,7 @@ class Trainer(nn.Module):
                 "tracker": self.accelerator,
                 "step": step,
                 "train": False,
+                "log_every": self.wandb_log_every,
             }
             psnrs = []
             with torch.no_grad():
