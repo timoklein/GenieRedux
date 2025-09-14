@@ -94,7 +94,6 @@ Note: This implementation is tested on Linux-64 with Python 3.13 and Conda packa
 To generate all initial datasets (saved in `data_generation/datasets/`), run:
 
 ```bash
-cd data_generation
 conda activate retro_datagen
 python run.py generate config=retro_act/pretrain
 python run.py generate config=retro_act/control
