@@ -55,9 +55,6 @@ We present a framework for training multi-environment world models spanning hund
 
 In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
 
-
-🚧🚧🚧 We are currently rolling out our codebase on multi-environment training and agent exploration for <b>"Exploration-Driven Generative Interactive Environments"</b>! We have released our data generation, RetroAct dataset, latest GenieRedux-G code, AutoExplore Agent code, and training/evaluation instructions on many environments. We are preparing AutoExplore data generation and finetuning code.
-
 > ⚠️ For a minimal case study with the Coinrun environment (as described [here](https://nsavov.github.io/GenieRedux/)), where both GenieRedux and GenieRedux-G are demonstrated, with pretrained weights and with an option for a trained agent, please refer to the [neurips branch](https://github.com/insait-institute/GenieRedux/tree/neurips).
 ![CoinRun](docs/title.gif)
 
