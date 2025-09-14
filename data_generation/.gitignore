@@ -163,3 +163,4 @@ datasets/
 sandbox.py
 **/.git_bk/
 **/google-cloud-sdk/
+external/agent57_checkpoints/*

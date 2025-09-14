@@ -33,34 +33,8 @@ def construct_model(config):
     if config.model == "tokenizer":
         return tokenizer
 
-    # Load tokenizer weights
-    # Priority:
-    # 1) If a warm-start model path is provided, load tokenizer from the same directory (tokenizer.pt symlink)
-    # 2) Otherwise, fall back to config.tokenizer_fpath if provided
-    tok_loaded = False
-    model_fpath = getattr(config, "model_fpath", None)
-    if model_fpath:
-        model_dir = os.path.dirname(model_fpath)
-        tok_link_path = os.path.join(model_dir, "tokenizer.pt")
-        if not os.path.exists(tok_link_path):
-            raise FileNotFoundError(
-                f"Tokenizer symlink not found next to warm-start checkpoint: '{tok_link_path}'."
-            )
-        tokenizer_state_dict = torch.load(tok_link_path, map_location=torch.device("cpu"))
-        tokenizer.load_state_dict(tokenizer_state_dict["model"])
-        del tokenizer_state_dict
-        tok_loaded = True
-
-    if not tok_loaded and hasattr(config, "tokenizer_fpath") and config.tokenizer_fpath:
-        if not os.path.exists(config.tokenizer_fpath):
-            raise FileNotFoundError(
-                f"Tokenizer checkpoint not found at '{config.tokenizer_fpath}'."
-            )
-        tokenizer_state_dict = torch.load(
-            config.tokenizer_fpath, map_location=torch.device("cpu")
-        )
-        tokenizer.load_state_dict(tokenizer_state_dict["model"])
-        del tokenizer_state_dict
+    # Tokenizer weights are now loaded in the training script (train_genie_redux.py)
+    # to enforce clear precedence and error handling across model/tokenizer options.
 
     # Determine guidance from config instead of model name
     is_guided = getattr(config.dynamics, "is_guided", False)

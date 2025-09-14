@@ -71,41 +71,34 @@ In our latest work, we demonstrate our method on many platformer environments, o
     cd GenieRedux
    ```
 
-2. <b> Data Generation Environment Installation. </b>
-  This will install the `retro_datagen` environment which enables the use of the Stable Retro environments:
+2. <b>Install environments.</b>
+
    ```shell
-    conda env create -f data_generation/retro_env.yml
-    conda activate retro_datagen
+   bash install.sh
    ```
 
-   You will need to import the game ROMs. To do so, please follow instructions at the [Stable-Retro Docs](https://stable-retro.farama.org/getting_started/#importing-roms).
+   Installs 3 conda environments:
+   - `retro_datagen` - data generation environment with support for Stable-Retro.
+   - `genie_redux` - environment for training and evaluation of GenieRedux models
+   - `auto_explore` - environment for training and evaluation of AutoExplore Agent models.
 
-3. <b>GenieRedux Environment  Installation.</b>
-  Set up the Python environment:
-   ```shell
-    conda env create -f genie_redux_env.yaml
-    conda activate genie_redux
-   ``` 
-   This script will create a conda environment named `genie_redux`.
+   In addition, our modified Agent57 repository is set up and our pretrained Agent57 models - downloaded
 
-   Note: This implementation is tested on Linux-64 with Python 3.13 and Conda package manager.
+   > ⚠️ You need to obtain and import the game ROMs in Stable-Retro. To do so, please follow instructions at the [Stable-Retro Docs](https://stable-retro.farama.org/getting_started/#importing-roms).
 
+Note: This implementation is tested on Linux-64 with Python 3.13 and Conda package manager.
 ## Quickstart
 
-### Data Generation
+### Initial Data Generation
 
-Initial setup:
-```
-cd data_generation
-conda activate retro_datagen
-```
-
-To generate all datasets (saved in `data_generation/datasets/`), run:
+To generate all initial datasets (saved in `data_generation/datasets/`), run:
 
 ```bash
-python generate.py --config configs/data_gen_retro.json
-python generate.py --config configs/data_gen_retro_control.json
-python generate.py --config configs/data_gen_retro_control_test_set.json
+cd data_generation
+conda activate retro_datagen
+python run.py generate config=retro_act/pretrain
+python run.py generate config=retro_act/control
+python run.py generate config=retro_act/control_test
 ```
 
 ### Training GenieRedux
@@ -158,7 +151,7 @@ conda activate auto_explore
 Launch AutoExplore training via the unified launcher using the `auto_explore` stack. Lightning Fabric handles device setup internally.
 
 ```bash
-python run.py auto_explore train common.root_dpath=checkpoints/auto_explore world_model.root_dpath=checkpoints/genie_redux_guided world_model.model_dname=genie_redux_guided world_model.model_fname=model-100000.pt collection.games='["AdventureIslandII-Nes"]'
+python run.py auto_explore train common.root_dpath=checkpoints/auto_explore world_model.root_dpath=checkpoints/genie_redux_guided world_model.model_dname=genie_redux_guided world_model.model_fname=model-100000.pt collection.games='["SuperMarioBros-Nes"]'
 ```
 
 Notes:
@@ -176,7 +169,7 @@ conda activate auto_explore
 Launch evaluation via the unified launcher using the `auto_explore` stack.
 
 ```bash
-python run.py auto_explore eval world_model.root_dpath=checkpoints/genie_redux_guided world_model.model_dname=genie_redux_guided world_model.model_fname=model-100000.pt common.root_dpath=checkpoints/auto_explore common.resume_id=1 common.resume_ckpt_id=model_best_reward collection.games='["AdventureIslandII-Nes"]'
+python run.py auto_explore eval world_model.root_dpath=checkpoints/genie_redux_guided world_model.model_dname=genie_redux_guided world_model.model_fname=model-100000.pt common.root_dpath=checkpoints/auto_explore common.resume_id=1 common.resume_ckpt_id=model_best_reward collection.games='["SuperMarioBros-Nes"]'
 ```
 
 Notes:
@@ -186,30 +179,78 @@ Notes:
 - `collection.games` selects the game (the same as in training should be used)
 - Evaluation runs a single very long episode per epoch, computes average return, and generates gifs, stored on wandb and in <run_dir>/outputs/gifs/.
 
-## Data Generation
 
-Initial setup:
+### AutoExplore Data Generation
+
+To generate a dataset with the trained AutoExplore Agent (saved in `data_generation/datasets/`), run:
+
 ```bash
-cd data_generation
 conda activate retro_datagen
+python run.py generate config=retro_act/auto_explore_ai2 config.connector.agent.checkpoint_fpath=`realpath checkpoints/auto_explore/001_auto_explore/checkpoints/model_best_reward.pt`
 ```
+
+### Finetuning GenieRedux on AutoExplore Data
+First, the tokenizer is finetuned:
+```bash
+conda activate genie_redux
+python run.py genie_redux train config=tokenizer_ft_smb.yaml train.num_processes=6 train.batch_size=7 train.grad_accum=2 tokenizer_fpath=checkpoints/tokenizer/tokenizer/model-150000.pt
+```
+
+Then, given the finetuned tokenizer, the dynamics is finetuned
+```bash
+python run.py genie_redux train config=genie_redux_guided_ft_smb train.num_processes=7 train.batch_size=4 train.grad_accum=3 model_fpath=checkpoints/genie_redux_guided/genie_redux_guided/model-100000.pt tokenizer_fpath=checkpoints/tokenizer/tokenizer_ft_smb/model-150000.pt
+```
+
+### Evaluating the finetuned GenieRedux-G with Agent57
+First, generate a dataset with our pretrained weights:
+
+```bash
+conda activate retro_datagen
+python run.py generate config=retro_act/agent57_smb
+```
+
+- Note: Also available: `Agent57_AdventureIslandII-Nes.ckpt`
+- Note: If you wish to train your own Agent57 model, check our script `external/deep_rl_zoo/deep_rl_zoo/agent57/run_retro.py`, which enables training with `stable-retro`.
+
+Then, we evaluate on the generated set:
+
+```bash
+conda activate genie_redux
+python run.py genie_redux eval config=genie_redux_guided_ft_smb eval.action_to_take=-1 eval.model_fpath=checkpoints/genie_redux_guided/genie_redux_guided_ft_smb/model-10000.pt eval.inference_method=one_go 
+```
+
+## Data Generation
 
 Data generation is ran in the following format:
 ```
-python generate --config configs/<CONFIG_NAME>.json
+conda activate retro_datagen
+python run.py generate config=<CONNECTOR_NAME>/<CONFIG_NAME>.json
 ```
 
-### Data Generation Parameters
+Note the following important parameters:
+- `config.connector.image_size` - defines the resolution of the images (default: 64).
+- `config.connector.generator_config.n_sessions` - number of episodes to generate.
+- `config.connector.generator_config.n_steps_max` - maximum number of steps before ending the episode.
+- `config.connector.generator_config.n_workers` - number of workers to generate episodes in parallel.
 
-Additional customization is available in the configuration files in `data_generation/configs/`. Note the following important properties:
-- `image_size` - defines the resolution of the images (default: 64)
-- `n_instances` - number of episodes to generate
-- `n_steps_max` - maximum number of steps before ending the episode
-- `n_workers` - number of workers to generate episodes in parallel
+Additional customization is available in the configuration files in `data_generation/configs/`. 
+
+> ⚠️ Giving relative paths as CLI arguments is forbidden for data generation - you can use `realpath` to convert to absolute paths.
+
+### Using an Agent
+The policy is selected with:
+- `config.connector.variant` - possible values: `random` (default), `auto_explore` and `agent57`.
+
+If an agent (anythin else than `random`) is selected, then the following parameters are available:
+- `config.connector.agent.checkpoint_fpath` - model file path.
+- `config.connector.agent.gamma` - probability of taking a random action.
+- `config.connector.agent.temperature` - (`auto_explore` only) the temperature with which we draw an action from the action policy.
+
+`gamma` and `temperature` are used to create variance between the episodes. Without them (e.g. just using an argmax) the episodes will all be the same.
 
 ## Entrypoint
 
-All training and evaluation in this repository is launched through a single entrypoint:
+Training and evaluation are launched through a single entrypoint.
 
 ```bash
 python run.py <MODEL> <MODE> <parameters...>
@@ -252,6 +293,16 @@ And if you want to train the `GenieRedux` or `GenieReduxGuided` model, an alread
 ```yaml
 tokenizer_fpath: <path_to_tokenizer>
 ```
+
+If you want to pretrain, provide:
+
+```yaml
+model_fpath: <path_to_pretrained_model>
+```
+
+It is expected that `config.yaml` and `tokenizer.pt` live within the same directory.
+
+> ⚠️ When both provided, `model_fpath` is first loaded and then the tokenizer is loaded from `tokenizer_fpath`.
 
 ### Running Training
 

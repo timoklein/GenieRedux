@@ -1,9 +1,11 @@
-import argparse
 import copy
 import json
 
 import tqdm
 from generator.generator import EnvironmentDataGenerator
+
+from omegaconf import OmegaConf
+import hydra
 
 
 def run_env(config, connector_config):
@@ -23,12 +25,58 @@ def run_env(config, connector_config):
     print(f"Done with {generator.name}...")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="configs/data_gen_retro.json")
-    parser.add_argument("--max_workers", type=int, default=24)
-    args = parser.parse_args()
-    config = json.load(open(args.config))
+def hydra_cfg_to_legacy_dict(cfg) -> dict:
+    cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+    if not isinstance(cfg_dict, dict):
+        raise ValueError("Hydra config did not resolve to a dict.")
+    # normalize hydra-composed config to legacy dict
+    # Option B: namespaced 'connector' node (preferred)
+    if "connector" in cfg_dict and isinstance(cfg_dict["connector"], dict):
+        connector = cfg_dict["connector"]
+        env = connector.get("env") or cfg_dict.get("env")
+        if env is None:
+            raise ValueError("Hydra config 'connector' missing required key 'env' and no top-level 'env' found.")
+        return {
+            "data_dpath": cfg_dict.get("data_dpath"),
+            "dname": cfg_dict.get("dname", ""),
+            "env": env,
+            f"connector_{env}": connector,
+        }
+
+    # Some compositions may place the preset under a top-level 'config' node
+    # (e.g., if the group was injected with a package or via override). Handle that too.
+    if "config" in cfg_dict and isinstance(cfg_dict["config"], dict):
+        inner = cfg_dict["config"]
+        if "connector" in inner and isinstance(inner["connector"], dict):
+            connector = inner["connector"]
+            env = connector.get("env") or cfg_dict.get("env")
+            if env is None:
+                raise ValueError("Hydra config under 'config' missing 'connector.env' and no top-level 'env'.")
+            # Prefer dname from nested config block; fall back to root if provided
+            dname = inner.get("dname", cfg_dict.get("dname", ""))
+            return {
+                "data_dpath": cfg_dict.get("data_dpath"),  # stays at root
+                "dname": dname,
+                "env": env,
+                f"connector_{env}": connector,
+            }
+
+    # Fallback: flat root composition
+    env = cfg_dict.get("env")
+    if env is None:
+        raise ValueError("Hydra config missing required key 'env'.")
+    global_keys = {"data_dpath", "dname", "hydra"}
+    connector = {k: v for k, v in cfg_dict.items() if k not in global_keys}
+    return {
+        "data_dpath": cfg_dict.get("data_dpath"),
+        "dname": cfg_dict.get("dname", ""),
+        "env": env,
+        f"connector_{env}": connector,
+    }
+
+@hydra.main(version_base="1.3", config_path="configs", config_name="default")
+def main(cfg):
+    config = hydra_cfg_to_legacy_dict(cfg)
 
     connector_configs = []
     if config["env"] == "coinrun":
@@ -46,9 +94,22 @@ if __name__ == "__main__":
         from generator.connector_retro_act import (
             GameData,
             RetroActConnector,
+            RetroActAutoExploreConnector,
+            RetroActAgent57Connector,
         )
 
-        connector_config_retro_act["classname"] = RetroActConnector
+        # Choose connector class by variant (normalize missing/legacy 'default' -> 'random')
+        variant = connector_config_retro_act.get("variant", "random")
+        if variant == "default":
+            variant = "random"
+        if variant == "auto_explore":
+            connector_cls = RetroActAutoExploreConnector
+        elif variant == "agent57":
+            connector_cls = RetroActAgent57Connector
+        elif variant == "random":
+            connector_cls = RetroActConnector
+
+        connector_config_retro_act["classname"] = connector_cls
         game_data = GameData(
             annotation_fpath=connector_config_retro_act["annotation_behavior_fpath"],
             control_annotation_fpath=connector_config_retro_act[
@@ -114,3 +175,7 @@ if __name__ == "__main__":
     # pool.close()
     # pool.join()
     print("Done")
+
+
+if __name__ == "__main__":
+    main()

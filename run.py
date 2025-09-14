@@ -12,6 +12,37 @@ from omegaconf import DictConfig
 
 
 def main() -> int:
+    # Special-case: expose data generation via `run.py generate <hydra overrides>`
+    if len(sys.argv) > 1 and sys.argv[1] == "generate":
+        overrides = sys.argv[2:]
+        gen_dir = (Path(__file__).parent / "data_generation").resolve()
+        script_path = str(gen_dir / "generate.py")
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        # Validate that any path-like overrides are absolute (ban relative paths)
+        # Enforce for keys ending with _fpath, _dpath, or _path
+        path_suffixes = ("_fpath", "_dpath", "_path")
+        for ov in overrides:
+            if "=" not in ov:
+                continue
+            key, val = ov.split("=", 1)
+            key = key.strip()
+            if not key.endswith(path_suffixes):
+                continue
+            v = val.strip().strip('"').strip("'")
+            # Allow null-like values to pass through
+            if v in ("", "null", "None"):
+                continue
+            v_expanded = os.path.expanduser(v)
+            if not os.path.isabs(v_expanded):
+                sys.stderr.write(
+                    f"Error: override '{key}' must be an absolute path, got '{val}'.\n"
+                )
+                return 2
+        # Delegate to the Hydra-enabled script so overrides are handled uniformly
+        # Run with CWD set to data_generation so relative paths (configs/, annotations/, etc.) resolve correctly.
+        return subprocess.call([sys.executable, "-u", script_path] + list(overrides or []), env=env, cwd=str(gen_dir))
+
     parser = argparse.ArgumentParser(description="Unified entrypoint for GenieRedux and AutoExplore stacks")
     parser.add_argument("stack", choices=["auto_explore", "genie_redux"], help="Target stack")
     parser.add_argument("action", choices=["train", "eval"], help="Action to perform")

@@ -49,15 +49,45 @@ def run(args):
     n_total_samples = args.train.n_total_samples
     n_envs = args.train.n_envs
 
-    # If a warm-start model path is provided, ensure it exists and load it
-    if hasattr(args, "model_fpath") and args.model_fpath:
-        if not os.path.exists(args.model_fpath):
+    # Enforce explicit and predictable loading behavior for model/tokenizer
+    if getattr(args, "model", None) != "tokenizer":
+        have_model = bool(getattr(args, "model_fpath", None))
+        have_tok = bool(getattr(args, "tokenizer_fpath", None))
+
+        if not have_model and not have_tok:
+            raise ValueError("Provide at least one of 'model_fpath' or 'tokenizer_fpath'.")
+
+        if have_model and not os.path.exists(args.model_fpath):
             raise FileNotFoundError(
                 f"Training warm-start checkpoint not found at '{args.model_fpath}'."
             )
-        model_state_dict = torch.load(args.model_fpath, map_location="cpu")
-        model.load_state_dict(model_state_dict["model"])  # strict loading
-        del model_state_dict
+        if have_tok and not os.path.exists(args.tokenizer_fpath):
+            raise FileNotFoundError(
+                f"Tokenizer checkpoint not found at '{args.tokenizer_fpath}'."
+            )
+
+        # Load order: model first (if provided), then tokenizer (if provided)
+        if have_model:
+            model_state_dict = torch.load(args.model_fpath, map_location="cpu")
+            model.load_state_dict(model_state_dict["model"])  # strict loading
+            del model_state_dict
+
+        if have_tok:
+            tok_state = torch.load(args.tokenizer_fpath, map_location="cpu")
+            if not hasattr(model, "tokenizer"):
+                raise AttributeError("Model does not expose a 'tokenizer' attribute for loading.")
+            model.tokenizer.load_state_dict(tok_state["model"])
+            del tok_state
+    else:
+        # Tokenizer-only training: do not use model_fpath; optional tokenizer_fpath only
+        if getattr(args, "tokenizer_fpath", None):
+            if not os.path.exists(args.tokenizer_fpath):
+                raise FileNotFoundError(
+                    f"Tokenizer checkpoint not found at '{args.tokenizer_fpath}'."
+                )
+            tok_state = torch.load(args.tokenizer_fpath, map_location="cpu")
+            model.load_state_dict(tok_state["model"])  # Tokenizer model
+            del tok_state
 
     kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(
@@ -132,28 +162,13 @@ def run(args):
     if getattr(args, "model", None) != "tokenizer":
         link_path = os.path.join(save_dpath, "tokenizer.pt")
         try:
-            # Remove existing link/file if present
             if os.path.islink(link_path) or os.path.exists(link_path):
                 os.remove(link_path)
-
-            # Prefer copying the tokenizer symlink from a warm-start checkpoint directory
-            if hasattr(args, "model_fpath") and args.model_fpath:
-                src_link = os.path.join(os.path.dirname(args.model_fpath), "tokenizer.pt")
-                if not os.path.exists(src_link):
-                    raise FileNotFoundError(
-                        f"Tokenizer symlink not found next to warm-start checkpoint: '{src_link}'"
-                    )
-                # Create a symlink to the existing symlink (copy the symlink itself)
-                os.symlink(src_link, link_path)
-            else:
-                # Fall back to an explicit tokenizer_fpath if provided
-                tok_fpath = getattr(args, "tokenizer_fpath", None)
-                if tok_fpath and os.path.exists(tok_fpath):
-                    os.symlink(os.path.abspath(tok_fpath), link_path)
+            tok_fpath = getattr(args, "tokenizer_fpath", None)
+            if tok_fpath and os.path.exists(tok_fpath):
+                os.symlink(os.path.abspath(tok_fpath), link_path)
         except Exception as e:
-            print(
-                f"Warning: failed to create tokenizer symlink at '{link_path}': {e}"
-            )
+            print(f"Warning: failed to create tokenizer symlink at '{link_path}': {e}")
 
     trainer = Trainer(
         model=model,

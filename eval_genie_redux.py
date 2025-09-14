@@ -235,13 +235,44 @@ def run(args):
 
     model = construct_model(args)
 
-    if not args.eval.model_fpath or not os.path.exists(args.eval.model_fpath):
-        raise FileNotFoundError(
-            f"Evaluation model checkpoint not found at '{args.eval.model_fpath}'."
-        )
-    model_state_dict = torch.load(args.eval.model_fpath, map_location="cpu")
-    model.load_state_dict(model_state_dict["model"])
-    del model_state_dict
+    # Harmonized load behavior with training
+    if getattr(args, "model", None) != "tokenizer":
+        have_model = bool(getattr(args.eval, "model_fpath", None))
+        have_tok = bool(getattr(args, "tokenizer_fpath", None))
+
+        if not have_model and not have_tok:
+            raise ValueError("Provide at least one of eval.model_fpath or tokenizer_fpath for evaluation.")
+
+        if have_model and not os.path.exists(args.eval.model_fpath):
+            raise FileNotFoundError(
+                f"Evaluation model checkpoint not found at '{args.eval.model_fpath}'."
+            )
+        if have_tok and not os.path.exists(args.tokenizer_fpath):
+            raise FileNotFoundError(
+                f"Tokenizer checkpoint not found at '{args.tokenizer_fpath}'."
+            )
+
+        if have_model:
+            model_state_dict = torch.load(args.eval.model_fpath, map_location="cpu")
+            model.load_state_dict(model_state_dict["model"])  # strict
+            del model_state_dict
+
+        if have_tok:
+            tok_state = torch.load(args.tokenizer_fpath, map_location="cpu")
+            if not hasattr(model, "tokenizer"):
+                raise AttributeError("Model does not expose a 'tokenizer' attribute for loading.")
+            model.tokenizer.load_state_dict(tok_state["model"]) 
+            del tok_state
+    else:
+        # Tokenizer-only eval: do not use eval.model_fpath; optional tokenizer_fpath only
+        if getattr(args, "tokenizer_fpath", None):
+            if not os.path.exists(args.tokenizer_fpath):
+                raise FileNotFoundError(
+                    f"Tokenizer checkpoint not found at '{args.tokenizer_fpath}'."
+                )
+            tok_state = torch.load(args.tokenizer_fpath, map_location="cpu")
+            model.load_state_dict(tok_state["model"])  # Tokenizer model
+            del tok_state
 
     transforms = TransformsGenerator.get_final_transforms(model.image_size, None)
     test_data_set = MultiEnvironmentDataset(
