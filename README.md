@@ -55,6 +55,8 @@ We present a framework for training multi-environment world models spanning hund
 
 In our latest work, we demonstrate our method on many platformer environments, obtained from our annotated dataset. We provide the training and evaluation code.
 
+> 🚧 The complete codebase has been released. We are working on preparing and providing trained checkpoint files.
+
 > ⚠️ For a minimal case study with the Coinrun environment (as described [here](https://nsavov.github.io/GenieRedux/)), where both GenieRedux and GenieRedux-G are demonstrated, with pretrained weights and with an option for a trained agent, please refer to the [neurips branch](https://github.com/insait-institute/GenieRedux/tree/neurips).
 ![CoinRun](docs/title.gif)
 
