@@ -128,7 +128,7 @@ python run.py genie_redux train config=genie_redux_guided_50 train.num_processes
 ```
 
 #### (Optional) GenieRedux (Dynamics+LAM)
-Having the trained tokanizer, we can now train GenieRedux:
+Having the trained tokenizer, we can now train GenieRedux:
 ```bash
 python run.py genie_redux train config=genie_redux train.num_processes=7 train.batch_size=3 train.grad_accum=4 tokenizer_fpath=checkpoints/tokenizer/tokenizer/model-150000.pt
 ```
@@ -154,7 +154,7 @@ python run.py auto_explore train common.root_dpath=checkpoints/auto_explore worl
 
 Notes:
 - `world_model.*` points the agent to a pretrained Genie/GenieRedux checkpoint (directory name + filename).
-- ``collection.games` selects the game. Example games to try: <i>AdventureIslandII-Nes, SuperMarioBros-Nes, Flintstones-Genesis, TinyToonAdventuresBustersHiddenTreasure-Genesis, BronkieTheBronchiasaurus-Snes, BugsBunnyBirthdayBlowout-Nes</i>
+- `collection.games` selects the game. Example games to try: <i>AdventureIslandII-Nes, SuperMarioBros-Nes, Flintstones-Genesis, TinyToonAdventuresBustersHiddenTreasure-Genesis, BronkieTheBronchiasaurus-Snes, BugsBunnyBirthdayBlowout-Nes</i>
 - Outputs (checkpoints, configs, media) are written under `common.root_dpath/<run_name>`.
 
 
@@ -275,7 +275,7 @@ This project leverages **Hydra** for flexible configuration management:
 - Custom configurations should be added to the `configs/config/` directory.
 - At the beginning of custom configurations there should be `# @package _global_`.
 - Modify `default.yaml` to set new defaults.
-- Create new configuration files, with the predifined config `yaml` files as their base.
+- Create new configuration files, with the predefined config `yaml` files as their base.
 
 Control is given over model and training parameters, as well as dataset paths. 
 For example, dataset arguments are provided in the following format:
@@ -286,7 +286,7 @@ train:
   dataset_name: <dataset_name>
 ```
 
-And if you want to train the `GenieRedux` or `GenieReduxGuided` model, an already trained tokenizer must be provided:
+And if you want to train the `GenieRedux` or `GenieReduxGuided` model, a trained tokenizer must be provided:
 
 ```yaml
 tokenizer_fpath: <path_to_tokenizer>
@@ -305,7 +305,7 @@ It is expected that `config.yaml` and `tokenizer.pt` live within the same direct
 ### Running Training
 
 ```bash
-python run.py genie_redux train config=<CONFIG_NAME>.yaml <PARAMETERS>
+python run.py genie_redux train config=<CONFIG_NAME> <PARAMETERS>
 ```
 
 Current available configurations are:   
@@ -353,7 +353,7 @@ Some important parameters:
 - `common.epochs` - number of epochs to train
 - `common.device` - select `gpu` (default) or `cpu`
 - `collection.games` - in the form `'["GAMENAME"]`, it contains the `stable-retro` identifier of a game to use.
-- `collection.train.config.episilon` - defines randomness chance of an action
+- `collection.train.config.epsilon` - defines randomness chance of an action
 - `collection.train.config.n_preds` - defines how many predictions in the future the world model makes for the calculation of the reward
 - `collection.train.config.num_steps` - number of steps
 - `training.actor_critic.start_after` - number of epochs for a warmup (just data collection)
@@ -378,7 +378,7 @@ To enable this evaluation, set `eval.action_to_take=-1`.
 
 This evaluation is meant for qualitative results only. An action of choice, designated by an index (0 to 4 in the case of RetroAct), is given and it is executed by the model for the full sequence, given an input image.
 
-To enable this evaluaiton, set `eval.action_to_take=<ACTION_ID>`, where `<ACTION_ID>` is the aciton index. You can check the indexing in the data generation json file, defined by `valid_action_combos` parameter.
+To enable this evaluation, set `eval.action_to_take=<ACTION_ID>`, where `<ACTION_ID>` is the action index. You can check the indexing in the data generation json file, defined by `valid_action_combos` parameter.
 ### Evaluation Modes
 
 There are two evaluation modes:
@@ -390,10 +390,10 @@ There are two evaluation modes:
 ### Example
 
 ```bash
-python run.py genie_redux eval --config=genie_redux_guided.yaml --mode=eval --eval.action_to_take=0 --eval.model_path=<path_to_model> --eval.inference_method=one_go
+python run.py genie_redux eval config=genie_redux_guided_50.yaml eval.action_to_take=0 eval.model_path=<path_to_model> eval.inference_method=one_go
 ```
 
-The above command will evaluate the model at the specified path using the action at index `0`, which corresponds to the `RIGHT` action in the `RetroAct` dataset. You can see the visualizations of the model's predictions in the `./outputs/evaluation/<model-name>/<dataset>/`, dirctory, which is default path for the evaluation results.
+The above command will evaluate the model at the specified path using the action at index `0`, which corresponds to the `RIGHT` action in the `RetroAct` dataset. You can see the visualizations of the model's predictions in the `./outputs/evaluation/<model-name>/<dataset>/`, directory, which is default path for the evaluation results.
 
 ## AutoExplore Agent Evaluation
 
@@ -415,7 +415,7 @@ While the same parameters are available, the values of some of them under `eval`
 
 ### Data Directory
 - **`data.py`** - Contains data handlers to load the generated datasets for training. 
-- **`data_cached.py`** - A version of `data.py` for use with very large datasets that can benmefit from caching.
+- **`data_cached.py`** - A version of `data.py` for use with very large datasets that can benefit from caching.
 
 ### Models Directory
 
