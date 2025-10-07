@@ -230,6 +230,7 @@ Note the following important parameters:
 - `config.connector.generator_config.n_sessions` - number of episodes to generate.
 - `config.connector.generator_config.n_steps_max` - maximum number of steps before ending the episode.
 - `config.connector.generator_config.n_workers` - number of workers to generate episodes in parallel.
+- `config.connector.generator_config.output_mode` - `frame` or `video` - determines the format in which the data is saved.
 
 Additional customization is available in the configuration files in `data_generation/configs/`. 
 
@@ -336,7 +337,8 @@ python run.py genie_redux train config=genie_redux tokenizer_fpath=<path_to_toke
   - `genie_redux`
   - `genie_redux_guided_pretrain`
   - `genie_redux_guided`
-
+- `train.enable_cache` - (default: `True`) Caches the dataset structure on disk for fast loading.
+- `train.cache_dpath` - (default: `cache/<DATASET_NAME>`) The direcotry path of the cache.
 
 ## AutoExplore Agent Training
 
@@ -415,7 +417,6 @@ While the same parameters are available, the values of some of them under `eval`
 
 ### Data Directory
 - **`data.py`** - Contains data handlers to load the generated datasets for training. 
-- **`data_cached.py`** - A version of `data.py` for use with very large datasets that can benefit from caching.
 
 ### Models Directory
 
